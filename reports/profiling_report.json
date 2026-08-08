@@ -1,0 +1,676 @@
+{
+  "generated_at": "2026-08-08T14:07:28",
+  "entity_master": [
+    {
+      "entity_id": "E01",
+      "entity_name": "BHP Group",
+      "sector": "mining"
+    },
+    {
+      "entity_id": "E02",
+      "entity_name": "Glencore",
+      "sector": "mining"
+    },
+    {
+      "entity_id": "E03",
+      "entity_name": "Anglo American",
+      "sector": "mining"
+    },
+    {
+      "entity_id": "E04",
+      "entity_name": "AngloGold Ashanti",
+      "sector": "mining"
+    },
+    {
+      "entity_id": "E05",
+      "entity_name": "Gold Fields",
+      "sector": "mining"
+    },
+    {
+      "entity_id": "E06",
+      "entity_name": "Valterra Platinum",
+      "sector": "mining"
+    },
+    {
+      "entity_id": "E07",
+      "entity_name": "OUTsurance Group",
+      "sector": "insurance"
+    },
+    {
+      "entity_id": "E08",
+      "entity_name": "Sanlam",
+      "sector": "insurance"
+    },
+    {
+      "entity_id": "E09",
+      "entity_name": "Shoprite Holdings",
+      "sector": "consumer"
+    },
+    {
+      "entity_id": "E10",
+      "entity_name": "Bid Corporation",
+      "sector": "consumer"
+    },
+    {
+      "entity_id": "E11",
+      "entity_name": "Pepkor Holdings",
+      "sector": "consumer"
+    },
+    {
+      "entity_id": "E12",
+      "entity_name": "Clicks Group",
+      "sector": "consumer"
+    },
+    {
+      "entity_id": "E13",
+      "entity_name": "NEPI Rockcastle",
+      "sector": "real_estate"
+    },
+    {
+      "entity_id": "E14",
+      "entity_name": "Prosus",
+      "sector": "tech"
+    },
+    {
+      "entity_id": "E15",
+      "entity_name": "Naspers",
+      "sector": "tech"
+    },
+    {
+      "entity_id": "E16",
+      "entity_name": "MTN Group",
+      "sector": "telecoms"
+    },
+    {
+      "entity_id": "E17",
+      "entity_name": "Vodacom Group",
+      "sector": "telecoms"
+    },
+    {
+      "entity_id": "E18",
+      "entity_name": "The Bidvest Group",
+      "sector": "industrials_pharma"
+    },
+    {
+      "entity_id": "E19",
+      "entity_name": "Aspen Pharmacare",
+      "sector": "industrials_pharma"
+    },
+    {
+      "entity_id": "E20",
+      "entity_name": "Shaftesbury Capital plc",
+      "sector": "real_estate"
+    }
+  ],
+  "tables": {
+    "transactional_banking": {
+      "table": "transactional_banking",
+      "source_csv": "C:\\Users\\juddj\\OneDrive\\Desktop\\projects\\standardbank_hackathon\\data\\transactional_banking.csv",
+      "n_rows": 2802875,
+      "columns": [
+        [
+          "transaction_id",
+          "VARCHAR"
+        ],
+        [
+          "entity_id",
+          "VARCHAR"
+        ],
+        [
+          "entity_name",
+          "VARCHAR"
+        ],
+        [
+          "sector",
+          "VARCHAR"
+        ],
+        [
+          "date",
+          "DATE"
+        ],
+        [
+          "leg_type",
+          "VARCHAR"
+        ],
+        [
+          "direction",
+          "VARCHAR"
+        ],
+        [
+          "amount_zar",
+          "DOUBLE"
+        ],
+        [
+          "currency",
+          "VARCHAR"
+        ],
+        [
+          "channel",
+          "VARCHAR"
+        ],
+        [
+          "beneficiary_name",
+          "VARCHAR"
+        ],
+        [
+          "reference",
+          "VARCHAR"
+        ],
+        [
+          "memo",
+          "VARCHAR"
+        ],
+        [
+          "currency_norm",
+          "VARCHAR"
+        ]
+      ],
+      "null_rate_pct": {
+        "transaction_id": 0.0,
+        "entity_id": 0.0,
+        "entity_name": 0.0,
+        "sector": 0.0,
+        "date": 0.0,
+        "leg_type": 0.0,
+        "direction": 0.0,
+        "amount_zar": 0.0,
+        "currency": 0.0,
+        "channel": 0.0,
+        "beneficiary_name": 0.0,
+        "reference": 0.0,
+        "memo": 99.8695,
+        "currency_norm": 0.0
+      },
+      "date_range": {
+        "min": "2023-07-01",
+        "max": "2026-06-30"
+      },
+      "amount_stats": {
+        "n": 2802875,
+        "min": 205.35,
+        "max": 64832717.95764583,
+        "sum": 405442910068.7134,
+        "mean": 144652.51217721569
+      },
+      "n_distinct_entities": 20,
+      "categoricals": {
+        "sector": {
+          "n_distinct": 7,
+          "value_counts": {
+            "consumer": 1368943,
+            "insurance": 625472,
+            "mining": 287297,
+            "telecoms": 219106,
+            "industrials_pharma": 215109,
+            "tech": 82727,
+            "real_estate": 4221
+          }
+        },
+        "leg_type": {
+          "n_distinct": 5,
+          "value_counts": {
+            "collections": 1131589,
+            "supplier_payments": 976857,
+            "intercompany_sweeps": 672410,
+            "payroll": 16592,
+            "tax": 5427
+          }
+        },
+        "direction": {
+          "n_distinct": 2,
+          "value_counts": {
+            "inbound": 1467474,
+            "outbound": 1335401
+          }
+        },
+        "channel": {
+          "n_distinct": 5,
+          "value_counts": {
+            "EFT": 1261649,
+            "RTC": 560663,
+            "Internal Transfer": 419770,
+            "SWIFT": 280539,
+            "Debit Order": 280254
+          }
+        },
+        "currency": {
+          "n_distinct": 2,
+          "value_counts": {
+            "ZAR": 2774594,
+            "zar": 28281
+          }
+        },
+        "currency_norm": {
+          "n_distinct": 1,
+          "value_counts": {
+            "ZAR": 2802875
+          }
+        }
+      },
+      "free_text": {
+        "beneficiary_name": {
+          "n_distinct": 358,
+          "n_non_null": 2802875
+        },
+        "reference": {
+          "n_distinct": 1502146,
+          "n_non_null": 2802875
+        },
+        "memo": {
+          "n_distinct": 3643,
+          "n_non_null": 3657
+        }
+      }
+    },
+    "cross_border_payments": {
+      "table": "cross_border_payments",
+      "source_csv": "C:\\Users\\juddj\\OneDrive\\Desktop\\projects\\standardbank_hackathon\\data\\cross_border_payments.csv",
+      "n_rows": 241117,
+      "columns": [
+        [
+          "transaction_id",
+          "VARCHAR"
+        ],
+        [
+          "entity_id",
+          "VARCHAR"
+        ],
+        [
+          "entity_name",
+          "VARCHAR"
+        ],
+        [
+          "sector",
+          "VARCHAR"
+        ],
+        [
+          "date",
+          "DATE"
+        ],
+        [
+          "direction",
+          "VARCHAR"
+        ],
+        [
+          "currency_pair",
+          "VARCHAR"
+        ],
+        [
+          "value_zar",
+          "DOUBLE"
+        ],
+        [
+          "counterparty_country",
+          "VARCHAR"
+        ],
+        [
+          "corridor_type",
+          "VARCHAR"
+        ],
+        [
+          "beneficiary_name",
+          "VARCHAR"
+        ],
+        [
+          "reference",
+          "VARCHAR"
+        ],
+        [
+          "memo",
+          "VARCHAR"
+        ]
+      ],
+      "null_rate_pct": {
+        "transaction_id": 0.0,
+        "entity_id": 0.0,
+        "entity_name": 0.0,
+        "sector": 0.0,
+        "date": 0.0,
+        "direction": 0.0,
+        "currency_pair": 0.0,
+        "value_zar": 0.0,
+        "counterparty_country": 1.52,
+        "corridor_type": 0.0,
+        "beneficiary_name": 0.0,
+        "reference": 0.0,
+        "memo": 99.8142
+      },
+      "date_range": {
+        "min": "2023-07-01",
+        "max": "2026-06-30"
+      },
+      "amount_stats": {
+        "n": 241117,
+        "min": 1095.25,
+        "max": 92965120.84,
+        "sum": 133746695985.7497,
+        "mean": 554696.2511384502
+      },
+      "n_distinct_entities": 20,
+      "categoricals": {
+        "sector": {
+          "n_distinct": 7,
+          "value_counts": {
+            "consumer": 91300,
+            "telecoms": 48800,
+            "mining": 28197,
+            "tech": 24150,
+            "insurance": 23123,
+            "industrials_pharma": 20875,
+            "real_estate": 4672
+          }
+        },
+        "direction": {
+          "n_distinct": 2,
+          "value_counts": {
+            "outbound": 125794,
+            "inbound": 115323
+          }
+        },
+        "currency_pair": {
+          "n_distinct": 5,
+          "value_counts": {
+            "EUR/ZAR": 48339,
+            "GBP/ZAR": 48285,
+            "USD/ZAR": 48243,
+            "AED/ZAR": 48189,
+            "CNY/ZAR": 48061
+          }
+        },
+        "counterparty_country": {
+          "n_distinct": 34,
+          "value_counts": {
+            "Botswana": 14233,
+            "Brazil": 12600,
+            "Japan": 12404,
+            "United Kingdom": 12356,
+            "India": 12324,
+            "United Arab Emirates": 12317,
+            "Netherlands": 12251,
+            "Germany": 12247,
+            "China": 12192,
+            "Switzerland": 12160,
+            "United States": 12143,
+            "Zambia": 11395,
+            "Ghana": 11030,
+            "Namibia": 7958,
+            "Kenya": 7069,
+            "Lesotho": 6681,
+            "Nigeria": 6558,
+            "Mozambique": 5687,
+            "Eswatini": 5413,
+            "Angola": 4951,
+            "Uganda": 3936,
+            "DRC": 3890,
+            "Malawi": 3847,
+            "None": 3665,
+            "Egypt": 2896,
+            "Tanzania": 2693,
+            "Mauritius": 2609,
+            "Cameroon": 2457,
+            "South Sudan": 2451,
+            "Sudan": 2399,
+            "Ivory Coast": 2393,
+            "Ethiopia": 1275,
+            "Morocco": 1103,
+            "Zimbabwe": 1004,
+            "Guinea": 530
+          }
+        },
+        "corridor_type": {
+          "n_distinct": 3,
+          "value_counts": {
+            "trade": 109187,
+            "intercompany": 107969,
+            "other": 23961
+          }
+        }
+      },
+      "free_text": {
+        "beneficiary_name": {
+          "n_distinct": 180,
+          "n_non_null": 241117
+        },
+        "reference": {
+          "n_distinct": 227434,
+          "n_non_null": 241117
+        },
+        "memo": {
+          "n_distinct": 445,
+          "n_non_null": 448
+        }
+      }
+    },
+    "trade_finance": {
+      "table": "trade_finance",
+      "source_csv": "C:\\Users\\juddj\\OneDrive\\Desktop\\projects\\standardbank_hackathon\\data\\trade_finance.csv",
+      "n_rows": 20303,
+      "columns": [
+        [
+          "instrument_id",
+          "VARCHAR"
+        ],
+        [
+          "entity_id",
+          "VARCHAR"
+        ],
+        [
+          "entity_name",
+          "VARCHAR"
+        ],
+        [
+          "sector",
+          "VARCHAR"
+        ],
+        [
+          "date",
+          "DATE"
+        ],
+        [
+          "instrument_type",
+          "VARCHAR"
+        ],
+        [
+          "direction",
+          "VARCHAR"
+        ],
+        [
+          "tenor_days",
+          "BIGINT"
+        ],
+        [
+          "value_zar",
+          "DOUBLE"
+        ],
+        [
+          "counterparty_country",
+          "VARCHAR"
+        ],
+        [
+          "commodity_or_contract_type",
+          "VARCHAR"
+        ],
+        [
+          "status",
+          "VARCHAR"
+        ],
+        [
+          "beneficiary_name",
+          "VARCHAR"
+        ],
+        [
+          "reference",
+          "VARCHAR"
+        ],
+        [
+          "memo",
+          "VARCHAR"
+        ]
+      ],
+      "null_rate_pct": {
+        "instrument_id": 0.0,
+        "entity_id": 0.0,
+        "entity_name": 0.0,
+        "sector": 0.0,
+        "date": 0.0,
+        "instrument_type": 0.0,
+        "direction": 0.0,
+        "tenor_days": 0.0,
+        "value_zar": 0.0,
+        "counterparty_country": 1.5712,
+        "commodity_or_contract_type": 0.0,
+        "status": 0.0,
+        "beneficiary_name": 0.0,
+        "reference": 0.0,
+        "memo": 99.537
+      },
+      "date_range": {
+        "min": "2023-07-01",
+        "max": "2026-06-30"
+      },
+      "amount_stats": {
+        "n": 20303,
+        "min": 7493.6,
+        "max": 138163681.05,
+        "sum": 38476306723.39019,
+        "mean": 1895104.5029498197
+      },
+      "n_distinct_entities": 20,
+      "categoricals": {
+        "sector": {
+          "n_distinct": 7,
+          "value_counts": {
+            "consumer": 8238,
+            "mining": 5123,
+            "industrials_pharma": 3484,
+            "telecoms": 2726,
+            "insurance": 556,
+            "tech": 126,
+            "real_estate": 50
+          }
+        },
+        "instrument_type": {
+          "n_distinct": 3,
+          "value_counts": {
+            "letters_of_credit": 8134,
+            "export_collections": 6793,
+            "guarantees": 5376
+          }
+        },
+        "direction": {
+          "n_distinct": 2,
+          "value_counts": {
+            "import": 11294,
+            "export": 9009
+          }
+        },
+        "counterparty_country": {
+          "n_distinct": 34,
+          "value_counts": {
+            "Switzerland": 1496,
+            "Netherlands": 1496,
+            "United Kingdom": 1477,
+            "India": 1461,
+            "China": 1455,
+            "Germany": 1453,
+            "Brazil": 1450,
+            "United Arab Emirates": 1420,
+            "Japan": 1415,
+            "United States": 1404,
+            "Zambia": 960,
+            "Ghana": 847,
+            "Nigeria": 708,
+            "Kenya": 702,
+            "Botswana": 366,
+            "None": 319,
+            "Namibia": 259,
+            "Lesotho": 195,
+            "Mozambique": 194,
+            "Eswatini": 166,
+            "Uganda": 165,
+            "Angola": 128,
+            "Malawi": 124,
+            "Mauritius": 84,
+            "Ivory Coast": 77,
+            "South Sudan": 69,
+            "Cameroon": 66,
+            "Tanzania": 63,
+            "DRC": 61,
+            "Zimbabwe": 60,
+            "Sudan": 55,
+            "Egypt": 43,
+            "Guinea": 40,
+            "Ethiopia": 13,
+            "Morocco": 12
+          }
+        },
+        "commodity_or_contract_type": {
+          "n_distinct": 15,
+          "value_counts": {
+            "bid_bond": 1823,
+            "advance_payment_guarantee": 1794,
+            "performance_guarantee": 1759,
+            "platinum_group_metals": 1291,
+            "electronics": 1290,
+            "coal": 1277,
+            "copper": 1273,
+            "telecom_equipment": 1254,
+            "pharmaceuticals": 1242,
+            "chemicals": 1240,
+            "iron_ore": 1240,
+            "gold": 1234,
+            "agri_produce": 1205,
+            "consumer_goods": 1200,
+            "manufactured_goods": 1181
+          }
+        },
+        "status": {
+          "n_distinct": 4,
+          "value_counts": {
+            "settled": 8632,
+            "active": 7066,
+            "issued": 2995,
+            "expired": 1610
+          }
+        }
+      },
+      "free_text": {
+        "beneficiary_name": {
+          "n_distinct": 45,
+          "n_non_null": 20303
+        },
+        "reference": {
+          "n_distinct": 20134,
+          "n_non_null": 20303
+        },
+        "memo": {
+          "n_distinct": 94,
+          "n_non_null": 94
+        }
+      }
+    }
+  },
+  "competitor_memo_flag": {
+    "cross_border_payments": {
+      "n_memo_rows": 448.0,
+      "sum_memo_zar": 240429956.22999987,
+      "n_bank_beneficiary": 448.0,
+      "sum_bank_beneficiary_zar": 240429956.22999987,
+      "n_labelled_trade": 448.0
+    },
+    "trade_finance": {
+      "n_memo_rows": 94.0,
+      "sum_memo_zar": 163095269.56000003,
+      "n_bank_beneficiary": 0.0,
+      "sum_bank_beneficiary_zar": 0.0
+    },
+    "transactional_banking": {
+      "n_memo_rows": 3657.0,
+      "sum_memo_zar": 597220360.63,
+      "n_bank_beneficiary": 1544.0,
+      "sum_bank_beneficiary_zar": 452369428.13,
+      "n_non_bank_beneficiary": 2113.0,
+      "sum_non_bank_beneficiary_zar": 144850932.5
+    }
+  }
+}

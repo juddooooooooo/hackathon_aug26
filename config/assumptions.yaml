@@ -1,0 +1,43 @@
+# Syn Bank Share of Wallet Intelligence Engine — yield & intensity assumptions
+#
+# EVERY assumption used anywhere in this pipeline to convert observed flow
+# or exposure into rands of BANK REVENUE lives in this file, with a source
+# or rationale comment on the same line (or directly above it). Never
+# hardcode a yield/intensity coefficient inline in src/wallet.py or
+# anywhere else — see CLAUDE.md "Must-know" #1 and METHODOLOGY.md §1 for
+# why: 30% of the mark scheme is analytical rigor, and "where does this
+# number come from" is the first question a judge will ask of any
+# wallet-sizing figure.
+#
+# Not yet populated — this is Phase 4's (src/wallet.py) job. Structure
+# below follows Syn Bank's own three pillars per hackathon.txt and PLAN.md
+# Phase 4; adjust the shape as the data demands, but keep every leaf value
+# named and sourced.
+
+# transactional_banking:
+#   fee_per_payment_zar:
+#     value: ...
+#     source: ...                # e.g. industry benchmark / rationale
+#   deposit_nii_margin_bps:
+#     value: ...
+#     source: ...
+
+# global_markets:
+#   fx_spread_bps_by_pair:       # bps on hedged notional, per currency pair
+#     USD/ZAR: {value: ..., source: ...}
+#     EUR/ZAR: {value: ..., source: ...}
+#     GBP/ZAR: {value: ..., source: ...}
+#     AED/ZAR: {value: ..., source: ...}
+#     CNY/ZAR: {value: ..., source: ...}
+#   irs_notional_margin_bps:
+#     value: ...
+#     source: ...
+
+# investment_banking:
+#   arrangement_fee_bps:
+#     value: ...
+#     source: ...
+#   instrument_bps_per_annum:    # priced differently — guarantees != LCs
+#     letters_of_credit: {value: ..., source: ...}
+#     guarantees: {value: ..., source: ...}
+#     export_collections: {value: ..., source: ...}

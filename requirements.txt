@@ -1,0 +1,33 @@
+# Syn Bank Share of Wallet Intelligence Engine
+# Pinned to what the pipeline was built and tested against (Python 3.14).
+# Install with: pip install -r requirements.txt
+
+# --- data engineering ---
+duckdb==1.5.5
+pandas==2.3.3
+pyarrow==22.0.0
+numpy==2.4.0
+PyYAML==6.0.3
+python-dotenv==1.2.1
+tabulate==0.10.0
+
+# --- Gen AI (Google Gemini) ---
+google-genai==1.70.0
+
+# --- stats / modelling (Phase 5 rigor layer, Phase 6 opportunity ranking) ---
+scipy==1.16.3
+scikit-learn==1.8.0
+
+# --- schema validation for LLM-extracted structured output ---
+pydantic==2.12.5
+
+# --- retry/backoff for LLM API calls ---
+tenacity==9.1.2
+
+# --- dashboard & visualisation ---
+streamlit==1.52.2
+plotly==6.9.0
+matplotlib==3.10.8
+
+# --- testing ---
+pytest==9.1.1

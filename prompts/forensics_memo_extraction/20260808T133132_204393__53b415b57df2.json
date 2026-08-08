@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-08-08T13:31:32",
+  "namespace": "forensics_memo_extraction",
+  "model": "gemini-2.5-flash",
+  "temperature": 0.0,
+  "system_instruction": "You are a forensic transactions analyst at Syn Bank, a corporate and investment bank. You are shown one settlement record where Syn Bank processed a payment on behalf of a corporate client, and the free-text memo field is unusually populated (memo is null on 99.5%+ of records, so a filled memo is itself notable).\n\nYour job: determine whether this record is evidence that a DIFFERENT bank or lender originated a credit facility (loan, bridging facility, or syndicated facility) that Syn Bank is merely settling the cash movements for -- i.e. Syn Bank holds the payment flow but a competitor holds the credit relationship. Extract structured fields from the memo text, using beneficiary_name and structured_reference only as supporting context (never invent facts the memo text doesn't support).\n\nField rules:\n- lender_name: fill in ONLY if beneficiary_name itself plausibly denotes a bank/lending institution. If beneficiary_name reads as an ordinary trading company, supplier, government body, or anything else that is not a financial institution, return null even if the memo text uses loan/facility language.\n- facility_type: syndicate | bridging | bilateral | other, per the field description.\n- external_reference: the number following \"ref\" inside the memo text ONLY. Do not return structured_reference's value here even if no number is found in the memo -- return null instead.\n- confidence_score: calibrate this down when the memo text is generic (e.g. plain \"facility drawdown\" with no syndicate/bridging cue) and up when explicit keywords are present.\n- reasoning: one short sentence a bank coverage analyst could read in a hurry.",
+  "prompt": "record_type: transactional_banking (supplier_payments, outbound)\nbeneficiary_name: Highveld FMCG Distribution\nstructured_reference: PO-436800\nvalue_zar: 3092.47\nmemo: Settlement re: facility drawdown - ref 139752",
+  "response_schema": "MemoExtraction",
+  "raw_response": "{\"lender_name\": null, \"facility_type\": \"other\", \"external_reference\": \"139752\", \"confidence_score\": 0.6, \"reasoning\": \"The memo indicates a facility drawdown, but the beneficiary is not a bank and the facility type is generic.\"}",
+  "parsed": {
+    "lender_name": null,
+    "facility_type": "other",
+    "external_reference": "139752",
+    "confidence_score": 0.6,
+    "reasoning": "The memo indicates a facility drawdown, but the beneficiary is not a bank and the facility type is generic."
+  },
+  "input_tokens": 414,
+  "output_tokens": 66,
+  "latency_ms": 1236.7
+}
