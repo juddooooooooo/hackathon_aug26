@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-08-11T12:05:36",
+  "namespace": "financials_baseline_extraction",
+  "model": "gemini-2.5-flash",
+  "temperature": 0.0,
+  "system_instruction": "You are a credit/financial analyst at Syn Bank, a corporate and investment bank, building an external financial baseline for a JSE-listed corporate client from research notes your team has already gathered (fetched from public filings, filings-derived data aggregators, and results announcements). You are NOT browsing the web yourself -- you only see the raw text provided to you.\n\nYour job: extract a strict set of financial figures for the most recently COMPLETED fiscal year, each with a confidence flag, from text that may span multiple sources with different fiscal-year windows, currencies, and definitions (e.g. two different \"debt\" figures, or a metric derived from a calculation shown in the notes rather than a labelled line item).\n\nRules -- these matter more than completeness:\n- NEVER invent or estimate a number that isn't supported by the text. If a figure genuinely isn't present or derivable, leave it null. A null is far more useful downstream than a plausible-looking guess -- it lets uncertainty propagate honestly instead of being silently hidden.\n- Prefer the latest full fiscal year over a TTM (trailing-twelve-month) figure when the text shows both.\n- When multiple candidate figures conflict (e.g. balance-sheet \"Total Debt\" vs. a company-stated \"adjusted net debt\"), pick the more standard/comparable one for the named field and note the alternate in source_note -- do not average or silently pick whichever is larger/smaller.\n- Distinguish \"not applicable\" (this concept doesn't exist for this business model, e.g. inventory for an insurer) from \"not found\" (concept applies but no figure was in the text) -- use not_applicable_fields for the former, leave the field null with no special flag for the latter.\n- confidence: high = directly disclosed and unambiguous; medium = derived by calculation or an accepted proxy (e.g. operating-region mix standing in for revenue-destination mix); low = directional/qualitative source, real definitional ambiguity, or a single-quarter figure standing in for an annual one.",
+  "prompt": "entity_id: E20\nentity_name: Shaftesbury Capital plc\nsector: real_estate\n\n--- Research notes (fetched from public sources) ---\n\n# E20 \u2014 Shaftesbury Capital plc\n\nRetrieved: 2026-08-11. Listing used: LSE primary (LON:SHC). REIT (London West End real estate --\nCovent Garden, Carnaby, Seven Dials) -- no inventory/cost-of-revenue concept applies. This entity\nis UK-domiciled and UK-focused; included in Syn Bank's JSE-listed portfolio via a secondary/dual\nJSE listing (JSE:SHC) not separately covered by this aggregator's URL scheme -- same consolidated\ngroup accounts either way.\nSource: stockanalysis.com\n\n## Income statement\nURL: https://stockanalysis.com/quote/lon/SHC/financials/\nCurrency: GBP millions. FY = Jan-Dec.\n\n| | FY2025 | FY2024 | FY2023 | FY2022 | FY2021 |\n|---|---|---|---|---|---|\n| Revenue | 238.9 | 227.1 | 195.1 | 74.1 | 72.3 |\n| Gross Profit | 177.7 | 167.1 | 141.9 | 57.3 | 40 |\n\nNote: the FY2022 step-up from FY2021 and further step-up to FY2023 reflects the Capco/Shaftesbury\nplc merger completing in March 2023 (Shaftesbury Capital plc formed from that merger) -- a\nstructural change, not organic growth; flagged for Phase 4/5 trend analysis.\n\n## Balance sheet\nURL: https://stockanalysis.com/quote/lon/SHC/financials/balance-sheet/\nCurrency: GBP millions. FY = Jan-Dec. No inventory line (REIT).\n\n| | FY2025 | FY2024 | FY2023 | FY2022 | FY2021 |\n|---|---|---|---|---|---|\n| Accounts Receivable | 41.3 | 30.4 | 42.7 | 20.8 | 59.2 |\n| Accounts Payable | 98.1 | 84.8 | 96.0 | 41.9 | 39.0 |\n| Current Portion LT Debt | 438.4 | \u2014 | 94.9 | \u2014 | 0.7 |\n| Long-Term Debt | 772.4 | 1,468 | 1,535 | 738.3 | 940.3 |\n| Total Debt | 1,213 | 1,471 | 1,633 | 744.4 | 941 |\n\nNote: this is a UK-domestic REIT (100% UK properties) -- geographic-segment breakdown is\nexpected to be trivial (~100% UK), which is itself a meaningful signal for the Global Markets\npillar (near-zero FX hedging demand from operations, though GBP-denominated banking relationship\nstill relevant).\n\n\n---\n\n## Foreign revenue / geographic segment research\n\n## E20 Shaftesbury Capital plc\n100% foreign by the same logic: entirely London West End real estate (Covent Garden, Carnaby,\nSeven Dials), zero South African property exposure. High confidence, qualitative.",
+  "response_schema": "FinancialBaselineExtraction",
+  "raw_response": "{\n  \"fiscal_year_end\": \"2024-12-31\",\n  \"reported_currency\": \"GBP\",\n  \"total_revenue\": 227.1,\n  \"total_revenue_confidence\": \"high\",\n  \"cost_of_sales\": null,\n  \"cost_of_sales_confidence\": null,\n  \"cost_of_sales_is_derived\": false,\n  \"inventory\": null,\n  \"inventory_confidence\": null,\n  \"trade_receivables\": 30.4,\n  \"trade_receivables_confidence\": \"high\",\n  \"trade_payables\": 84.8,\n  \"trade_payables_confidence\": \"high\",\n  \"total_debt\": 1471.0,\n  \"total_debt_confidence\": \"high\",\n  \"foreign_revenue_pct\": 100.0,\n  \"foreign_revenue_pct_confidence\": \"high\",\n  \"not_applicable_fields\": [\n    \"cost_of_sales\",\n    \"inventory\"\n  ],\n  \"source_note\": \"All figures are for the fiscal year ending December 31, 2024, as reported by stockanalysis.com. The entity is a REIT, so inventory and cost of sales are not applicable. Foreign revenue is 100% as the company's properties are entirely in the UK, making all revenue foreign from a South African perspective.\"\n}",
+  "parsed": {
+    "fiscal_year_end": "2024-12-31",
+    "reported_currency": "GBP",
+    "total_revenue": 227.1,
+    "total_revenue_confidence": "high",
+    "cost_of_sales": null,
+    "cost_of_sales_confidence": null,
+    "cost_of_sales_is_derived": false,
+    "inventory": null,
+    "inventory_confidence": null,
+    "trade_receivables": 30.4,
+    "trade_receivables_confidence": "high",
+    "trade_payables": 84.8,
+    "trade_payables_confidence": "high",
+    "total_debt": 1471.0,
+    "total_debt_confidence": "high",
+    "foreign_revenue_pct": 100.0,
+    "foreign_revenue_pct_confidence": "high",
+    "not_applicable_fields": [
+      "cost_of_sales",
+      "inventory"
+    ],
+    "source_note": "All figures are for the fiscal year ending December 31, 2024, as reported by stockanalysis.com. The entity is a REIT, so inventory and cost of sales are not applicable. Foreign revenue is 100% as the company's properties are entirely in the UK, making all revenue foreign from a South African perspective."
+  },
+  "input_tokens": 1236,
+  "output_tokens": 334,
+  "latency_ms": 2327.6
+}

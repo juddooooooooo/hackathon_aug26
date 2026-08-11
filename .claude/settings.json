@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python -m pip list)",
       "Bash(env)",
-      "Bash(python -c \"import sys; print\\(sys.executable\\)\")"
+      "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
+      "WebFetch(domain:stockanalysis.com)"
     ]
   }
 }

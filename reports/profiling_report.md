@@ -1,6 +1,6 @@
 # Phase 1 — Ingestion & Profiling Report
 
-Generated: 2026-08-08T14:07:28
+Generated: 2026-08-11T12:17:18
 
 > **Every rand figure below is GROSS FLOW / EXPOSURE observed in the ledgers -- not bank revenue and not share of wallet.** Converting flow into revenue requires an explicit yield assumption (bps, fee-per-payment, NII margin, ...); that conversion happens in Phase 4 (`src/wallet.py`) using named, sourced assumptions in `config/assumptions.yaml`. See hackathon.txt's domain rule and METHODOLOGY.md.
 ## Entity master (20 expected clients — validated)

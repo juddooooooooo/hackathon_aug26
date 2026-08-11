@@ -248,20 +248,115 @@ defensible linguistic reading, not a hallucination (it never invents a
 word choice alone, at correspondingly lower confidence (0.70) — flagged
 here so it isn't presented with false precision.
 
-## External sources (Phase 3 onward)
+## 4. Phase 3 — External financial baseline (`src/financials.py`) [Gen AI #2]
 
-hackathon.txt explicitly invites supplementing the synthetic internal data
-with public sources (annual reports, JSE SENS, National Treasury, CIPC,
-DealMakers SA, Bloomberg open data, investor-relations pages), provided
-they're cited. Every external figure pulled into this pipeline (Phase 3
-financial baselines, and any competitive-intelligence context used in
-briefing notes) will be logged in `reports/external_sources.md` with:
-entity, figure, value, source URL, retrieval date, and the confidence flag
-carried alongside it in the data. Nothing gets folded into a model input
-without a citation attached — this is what lets Phase 3's "never let the
-model invent a number" rule be checked by a human.
+**Sourcing.** hackathon.txt explicitly invites supplementing the synthetic
+internal data with public sources (annual reports, JSE SENS, National
+Treasury, CIPC, DealMakers SA, Bloomberg open data, investor-relations
+pages), provided they're cited — see §0 "Discrepancy 2" for why this phase
+does real sourcing instead of PDF extraction. For cross-company consistency
+at 20-entity scale, core financials (revenue, cost of sales, inventory,
+trade receivables/payables, total debt) are sourced from
+[stockanalysis.com](https://stockanalysis.com), a filings-derived
+aggregator, using each entity's JSE listing where covered
+(`stockanalysis.com/quote/jse/<TICKER>`) and its primary global listing
+otherwise (dual-listed miners: BHP, Glencore, Anglo American, AngloGold
+Ashanti, Gold Fields; Prosus on Euronext Amsterdam; Shaftesbury Capital on
+LSE — same consolidated group accounts regardless of listing venue).
+Foreign/offshore revenue share is sourced separately per entity from each
+company's own results commentary where a specific figure exists — this is
+inherently less standardisable and is null for entities where no confident
+citable figure was found (11 of 20), consistent with the "null propagates"
+rule rather than estimated from adjectives like "highly diversified."
 
-## 4. Limitations (running list — extended every phase)
+Every fetch is saved verbatim at `data/external/raw/<entity_id>_*.md`
+(income statement + balance sheet, with source URLs) and
+`data/external/raw/geographic_foreign_revenue_notes.md` (foreign-revenue
+research, one section per entity) — this is the Phase 3 analogue of
+Phase 2's memo text: raw material that an LLM then extracts from, not
+something hand-transcribed into the final schema.
+
+**Extraction schema and pipeline shape mirror Phase 2 deliberately**
+(`FinancialBaselineExtraction`, Gemini `gemini-2.5-flash`, structured
+output, cached + logged via the same `src.llm.generate_structured`): every
+numeric field carries its own `*_confidence` (`high`/`medium`/`low`), and a
+`not_applicable_fields` list lets the model distinguish "this business
+model doesn't have inventory" (insurers, REITs) from "not found in the
+source text" — collapsing those two into one null would hide a genuine
+modelling decision (Phase 4 needs to know insurers structurally have no
+trade-finance-style inventory demand, not that we failed to find a number).
+`cost_of_sales` is explicitly allowed to be *derived* (`revenue -
+gross_profit`) when not directly disclosed, flagged `medium` confidence and
+`cost_of_sales_is_derived=true` rather than left null — most of the fetched
+income statements show gross profit but not cost of revenue as its own
+line, so a strict "only extract labelled line items" rule would have left
+this field almost entirely empty.
+
+### 4.1 A systematic bug found, root-caused, and fixed mid-phase
+
+The first full run picked the wrong fiscal year for **10 of 20 entities** —
+FY2024 instead of the genuinely most-recently-completed year (FY2025, or
+FY2026 for March-year-end entities), despite the later year's figures being
+present and unambiguous in the same source text. This was not a uniform
+"always picks the second-newest column" bug (Vodacom, Naspers, Prosus, BHP,
+Glencore, Valterra, NEPI Rockcastle all picked correctly the first time) —
+root cause traced to the model defaulting to a year that felt more familiar
+from its own training distribution when the correct answer required
+reasoning past that prior, most visibly on Anglo American, where a note we
+ourselves added explaining FY2025's unusual revenue drop (an active
+portfolio-restructuring year) appears to have given the model a reason to
+prefer the "more normal-looking" FY2024 instead of the correct FY2025.
+
+**Fix:** the system instruction now states today's date explicitly
+(2026-08-11), gives an explicit fiscal-year-selection algorithm ("scan
+every period-ending date in the text, pick the single latest one on or
+before today"), and explicitly instructs that an unusual-looking latest
+year is a reason to *keep* using it with a caveat, never a reason to fall
+back. Re-running after this change fixed all 10 entities in one pass — see
+`src/financials.py`'s `SYSTEM_INSTRUCTION` for the exact wording, and
+`tests/financials_ground_truth.csv`'s E19/E16 entries, which exist
+specifically as a regression check for this. **This is deliberately kept
+in the writeup rather than quietly re-run until clean** — it's a concrete,
+measured example of an LLM recency/anchoring bias, the kind of thing the
+brief's Gen AI criterion asks to be surfaced, not hidden.
+
+### 4.2 A cross-source definitional discrepancy, disclosed not resolved
+
+Spot-checking Anglo American's FY2024 cost of sales against a second
+aggregator (Yahoo Finance) surfaced a large, genuine disagreement:
+stockanalysis.com's income statement implies cost of sales of ~$27.5bn
+(gross profit **–**$228m) for FY2024, while Yahoo Finance shows cost of
+revenue ~$14.1bn (gross profit +$13.2bn) for the same company-year. Both
+numbers are internally consistent with *something* real — Anglo American
+recognised $3.8bn of net impairments in FY2024, and the two aggregators
+most likely differ on whether impairments sit inside "cost of sales" or
+below it. This was **not** resolved by picking a winner; it's disclosed
+here and the pipeline's `cost_of_sales_is_derived` + `medium` confidence
+flag on every derived figure exists precisely so a result like this can't
+be mistaken for a precise, agreed-upon number. Anyone building on
+`cost_of_sales` downstream (Phase 4's Transactional Banking driver) should
+treat it as directional for companies with a large impairment/exceptional
+item in the reference year, not a clean COGS line.
+
+### 4.3 Results
+
+**Coverage** (20/20 entities, after the fiscal-year fix): `total_revenue`
+100%, `total_debt` 100%, `trade_payables` 90%, `trade_receivables` 85%,
+`cost_of_sales` 85% (4 correctly `not_applicable` — 2 insurers, 2 REITs),
+`inventory` 75% (same 4 `not_applicable`, plus genuine gaps), `foreign_revenue_pct`
+**30%** (6/20) — the one field where "we didn't find a clean citable number"
+dominates, by design not filled in. See `reports/financials_report.md` for
+the full per-field confidence breakdown.
+
+**Ground-truth accuracy: 19/19 (100.0%)** on a hand-labelled sample
+(`tests/financials_ground_truth.csv`) spanning core revenue/debt figures,
+derived fields, not-applicable handling, and the fiscal-year-selection
+regression check above — independently re-verified against primary/
+alternate sources (BHP's and MTN's own results releases, Yahoo Finance,
+Wikipedia for NEPI Rockcastle's portfolio composition), not just re-read
+from the same aggregator the pipeline used.
+
+## 5. Limitations (running list — extended every phase)
 
 - **20 vs. 50 clients**: see §0. Every per-client statistic in this
   submission covers the 20 entities actually in the data.
@@ -276,3 +371,44 @@ model invent a number" rule be checked by a human.
   in general (two generic correspondent-banking labels also contain
   "Bank") — clean on this dataset only because those labels never carry a
   non-null memo. Documented and tested rather than silently assumed.
+- **`foreign_revenue_pct` coverage is genuinely low (30%, 6/20)** — see
+  §4.3. Where a specific number does exist it is sometimes a **different
+  vintage year** than the entity's core financials (Gold Fields' 87.8%
+  is FY2024 operating-region data sitting alongside FY2025 revenue/debt
+  figures, because no FY2025 geographic breakdown was fetched) — flagged
+  per-entity in `tests/financials_ground_truth.csv`'s notes rather than
+  silently reconciled. Phase 4/6 should treat this field as directional
+  evidence, not a precise same-year percentage, for every entity where it
+  is populated.
+- **LLM fiscal-year recency bias, found and fixed (§4.1)** — logged here as
+  a limitation of the underlying model, not just a bug that got patched.
+  The fix (explicit today's-date anchoring + an explicit selection
+  algorithm in the prompt) worked on this run, but there's no guarantee it
+  generalises to a future re-run with different source text without the
+  same spot-check discipline that caught it here (compare extracted
+  `fiscal_year_end` against the raw source's own most-recent column,
+  entity by entity, don't just trust a green pytest run).
+- **Two data aggregators can materially disagree on a "clean" income-
+  statement line** (§4.2, Anglo American cost of sales) — any
+  `cost_of_sales_is_derived=true` figure inherits whichever gross-profit
+  definition the underlying source used, which is not guaranteed
+  consistent company-to-company, especially in a year with large
+  impairments or exceptional items.
+- **`debt_maturity_profile` and `undrawn_facilities` were scoped out of the
+  Phase 3 schema entirely, not attempted-and-nulled.** hackathon.txt's Phase
+  3 spec asks for both; a full multi-year maturity ladder and a specific
+  undrawn-facility headroom figure are disclosed in annual report debt
+  notes far less consistently than the fields that made it into
+  `FinancialBaselineExtraction`, and sourcing them reliably for 20 entities
+  was judged not to fit a hackathon timeframe against the fields that feed
+  Phase 4's drivers most directly. If a later phase needs a maturity-wall
+  proxy, `total_debt`'s current-vs-non-current split IS in the committed
+  raw source files (`data/external/raw/*.md`) even though it never made it
+  into the schema — worth re-extracting rather than re-fetching.
+- **Core financials are sourced from a single aggregator (stockanalysis.com)
+  for cross-company consistency**, not independently verified against each
+  company's own primary filing for every figure — a deliberate scope
+  tradeoff for 20-entity coverage within a hackathon timeframe. The
+  ground-truth sample cross-checks a sample against alternate/primary
+  sources (§4.3) rather than every figure; treat Phase 3 output as a
+  well-evidenced baseline, not an audited one.

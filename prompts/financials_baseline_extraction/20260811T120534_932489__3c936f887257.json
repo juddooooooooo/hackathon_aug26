@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-08-11T12:05:34",
+  "namespace": "financials_baseline_extraction",
+  "model": "gemini-2.5-flash",
+  "temperature": 0.0,
+  "system_instruction": "You are a credit/financial analyst at Syn Bank, a corporate and investment bank, building an external financial baseline for a JSE-listed corporate client from research notes your team has already gathered (fetched from public filings, filings-derived data aggregators, and results announcements). You are NOT browsing the web yourself -- you only see the raw text provided to you.\n\nYour job: extract a strict set of financial figures for the most recently COMPLETED fiscal year, each with a confidence flag, from text that may span multiple sources with different fiscal-year windows, currencies, and definitions (e.g. two different \"debt\" figures, or a metric derived from a calculation shown in the notes rather than a labelled line item).\n\nRules -- these matter more than completeness:\n- NEVER invent or estimate a number that isn't supported by the text. If a figure genuinely isn't present or derivable, leave it null. A null is far more useful downstream than a plausible-looking guess -- it lets uncertainty propagate honestly instead of being silently hidden.\n- Prefer the latest full fiscal year over a TTM (trailing-twelve-month) figure when the text shows both.\n- When multiple candidate figures conflict (e.g. balance-sheet \"Total Debt\" vs. a company-stated \"adjusted net debt\"), pick the more standard/comparable one for the named field and note the alternate in source_note -- do not average or silently pick whichever is larger/smaller.\n- Distinguish \"not applicable\" (this concept doesn't exist for this business model, e.g. inventory for an insurer) from \"not found\" (concept applies but no figure was in the text) -- use not_applicable_fields for the former, leave the field null with no special flag for the latter.\n- confidence: high = directly disclosed and unambiguous; medium = derived by calculation or an accepted proxy (e.g. operating-region mix standing in for revenue-destination mix); low = directional/qualitative source, real definitional ambiguity, or a single-quarter figure standing in for an annual one.",
+  "prompt": "entity_id: E13\nentity_name: NEPI Rockcastle\nsector: real_estate\n\n--- Research notes (fetched from public sources) ---\n\n# E13 \u2014 NEPI Rockcastle\n\nRetrieved: 2026-08-11. Listing used: JSE (NRP). REIT (Central/Eastern European shopping\ncentres) -- no inventory/cost-of-revenue concept applies in the retail-trading sense.\nSource: stockanalysis.com\n\n## Income statement\nURL: https://stockanalysis.com/quote/jse/NRP/financials/\nCurrency: EUR millions. FY = Jan-Dec.\nRevenue: FY2021 \u20ac538.62M ... FY2025 \u20ac930.66M (only endpoints captured cleanly in this fetch).\nNet income FY2021-FY2025 range: \u20ac235M-\u20ac498.84M. No cost-of-revenue/gross-profit line (REIT).\n\n## Balance sheet\nURL: https://stockanalysis.com/quote/jse/NRP/financials/balance-sheet/\nCurrency: EUR millions. FY = Jan-Dec. No inventory line (REIT).\n\n| | FY2025 | FY2024 | FY2023 | FY2022 | FY2021 |\n|---|---|---|---|---|---|\n| Accounts Receivable | 86.93 | 95.85 | 71.72 | 85.5 | 46.87 |\n| Accounts Payable | \u2014 | \u2014 | \u2014 | 136.67 | \u2014 |\n| Current Portion LT Debt | 300.99 | 34.09 | 545.97 | 42.19 | 18.48 |\n| Long-Term Debt | 2,714 | 2,930 | 2,020 | 2,559 | 2,282 |\n| Total Debt | 3,106 | 3,050 | 2,623 | 2,638 | 2,338 |\n\n\n---\n\n## Foreign revenue / geographic segment research\n\n## E13 NEPI Rockcastle\n100% foreign by construction from a South African vantage point: the entire portfolio is Central\nand Eastern European shopping centres (Romania, Poland, Bulgaria, Slovakia, Hungary, Croatia,\nSerbia, Lithuania) -- a JSE listing with zero South African property exposure. High confidence,\nqualitative (no SA revenue line exists to cite a % against).",
+  "response_schema": "FinancialBaselineExtraction",
+  "raw_response": "{\n  \"fiscal_year_end\": \"2025-12-31\",\n  \"reported_currency\": \"EUR\",\n  \"total_revenue\": 930.66,\n  \"total_revenue_confidence\": \"high\",\n  \"cost_of_sales\": null,\n  \"cost_of_sales_confidence\": null,\n  \"cost_of_sales_is_derived\": false,\n  \"inventory\": null,\n  \"inventory_confidence\": null,\n  \"trade_receivables\": 86.93,\n  \"trade_receivables_confidence\": \"high\",\n  \"trade_payables\": null,\n  \"trade_payables_confidence\": null,\n  \"total_debt\": 3106,\n  \"total_debt_confidence\": \"high\",\n  \"foreign_revenue_pct\": 100,\n  \"foreign_revenue_pct_confidence\": \"high\",\n  \"not_applicable_fields\": [\n    \"cost_of_sales\",\n    \"inventory\"\n  ],\n  \"source_note\": \"Figures are for the fiscal year ending December 31, 2025, as reported by stockanalysis.com. As a REIT, cost of sales and inventory are not applicable. Trade payables for FY2025 were not explicitly stated in the provided balance sheet table.\"\n}",
+  "parsed": {
+    "fiscal_year_end": "2025-12-31",
+    "reported_currency": "EUR",
+    "total_revenue": 930.66,
+    "total_revenue_confidence": "high",
+    "cost_of_sales": null,
+    "cost_of_sales_confidence": null,
+    "cost_of_sales_is_derived": false,
+    "inventory": null,
+    "inventory_confidence": null,
+    "trade_receivables": 86.93,
+    "trade_receivables_confidence": "high",
+    "trade_payables": null,
+    "trade_payables_confidence": null,
+    "total_debt": 3106.0,
+    "total_debt_confidence": "high",
+    "foreign_revenue_pct": 100.0,
+    "foreign_revenue_pct_confidence": "high",
+    "not_applicable_fields": [
+      "cost_of_sales",
+      "inventory"
+    ],
+    "source_note": "Figures are for the fiscal year ending December 31, 2025, as reported by stockanalysis.com. As a REIT, cost of sales and inventory are not applicable. Trade payables for FY2025 were not explicitly stated in the provided balance sheet table."
+  },
+  "input_tokens": 1029,
+  "output_tokens": 313,
+  "latency_ms": 2265.9
+}

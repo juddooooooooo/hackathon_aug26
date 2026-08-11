@@ -14,7 +14,7 @@ Usage:
 Phases (see METHODOLOGY.md for what each one does and why):
     1. ingest     -- src/ingest.py     (DuckDB load + profiling report)
     2. forensics  -- src/forensics.py  (competitor-credit memo extraction) [Gen AI #1]
-    3. financials -- src/financials.py (external financial baseline)       [Gen AI #2]  -- not yet built
+    3. financials -- src/financials.py (external financial baseline)       [Gen AI #2]
     4. wallet     -- src/wallet.py     (total wallet + Syn Bank share)                  -- not yet built
     5. uncertainty-- src/uncertainty.py(Monte Carlo, sensitivity, triangulation)         -- not yet built
     6. opportunity-- src/opportunity.py(expected-value ranking)                          -- not yet built
@@ -32,7 +32,7 @@ from src.common import configure_logging
 
 logger = logging.getLogger("run_all")
 
-PHASES = ["ingest", "forensics"]  # extended as later phases are built
+PHASES = ["ingest", "forensics", "financials"]  # extended as later phases are built
 
 
 def main() -> None:
@@ -68,6 +68,18 @@ def main() -> None:
             sys.argv += ["--sample", str(args.sample)]
         sys.argv += ["--max-workers", str(args.max_workers)]
         forensics_main()
+
+    if "financials" in run_until:
+        logger.info("=" * 70)
+        logger.info("PHASE 3 -- External Financial Baseline (Gen AI #2)")
+        logger.info("=" * 70)
+        from src.financials import main as financials_main
+
+        sys.argv = ["financials"]
+        if args.no_llm:
+            sys.argv.append("--no-llm")
+        sys.argv += ["--max-workers", str(args.max_workers)]
+        financials_main()
 
     elapsed = time.perf_counter() - t_start
     logger.info("=" * 70)

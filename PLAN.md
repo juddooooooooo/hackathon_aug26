@@ -101,7 +101,7 @@ the LLM resolving the regex baseline's ambiguous `other` bucket into
 
 ---
 
-## Phase 3 — External financial baseline [Gen AI component 2] ⬜ NEXT
+## Phase 3 — External financial baseline [Gen AI component 2] ✅ DONE
 
 For the 20 real listed entities, build a structured table of the latest
 annual report figures: total revenue, foreign/offshore revenue %, cost of
@@ -124,8 +124,23 @@ with plausible-looking estimates.
 > "extract from a supplied PDF" to "extract from fetched/pasted filing
 > text to the same strict schema" — the "never invent a number, cite a
 > source, confidence-flag everything" requirement is unchanged. **Cite
-> every external source in `reports/external_sources.md`** (stub already
-> created) — entity, figure, value, source URL, retrieval date.
+> every external source in `reports/external_sources.md`** — entity,
+> figure, value, source URL, retrieval date.
+
+**Built as:** `src/financials.py`, raw source text committed at
+`data/external/raw/`. Output: `data/processed/financial_baseline.parquet`,
+`reports/financials_report.md`, `reports/external_sources.md`,
+`prompts/financials_baseline_extraction/*.json`. **Result: ground-truth
+accuracy 19/19 (100.0%)** on the hand-labelled sample
+(`tests/financials_ground_truth.csv`) after finding and fixing a
+systematic LLM fiscal-year-selection bug affecting 10/20 entities (see
+METHODOLOGY.md §4.1) and disclosing a genuine cross-aggregator
+definitional discrepancy on Anglo American's cost of sales rather than
+silently picking a number (§4.2). `foreign_revenue_pct` coverage is
+honestly low (30%, 6/20) — not backfilled. Debt maturity profile and
+undrawn facilities were **not** built as separate fields this phase — see
+METHODOLOGY.md §5 limitations; `total_debt`'s current/non-current split is
+available in the raw source files if Phase 4 needs a coarser proxy.
 
 ## Phase 4 — Wallet model ⬜
 

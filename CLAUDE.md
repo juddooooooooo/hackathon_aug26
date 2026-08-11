@@ -13,12 +13,12 @@ hackathons usually look like" — this repo has already made a lot of
 specific, non-obvious decisions (see below). Read PLAN.md + METHODOLOGY.md
 first or you will redo work or contradict an earlier decision.
 
-## Status: Phase 2 of 8 complete
+## Status: Phase 3 of 8 complete
 
 - [x] Phase 1 — Ingestion & profiling
 - [x] Phase 2 — Forensic extraction (Gen AI #1)
-- [ ] Phase 3 — External financial baseline (Gen AI #2) **← start here**
-- [ ] Phase 4 — Wallet model
+- [x] Phase 3 — External financial baseline (Gen AI #2)
+- [ ] Phase 4 — Wallet model **← start here**
 - [ ] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation)
 - [ ] Phase 6 — Opportunity ranking
 - [ ] Phase 7 — Bonus modules (cash-cycle timing, latency/cost optimisation)
@@ -55,7 +55,17 @@ a phase completes.
    implied by the brief's 2-file description. Full derivation:
    METHODOLOGY.md §2.1 and §3. This is the number Phase 4+ should build
    against.
-5. **Gemini, not Claude/OpenAI.** `src/llm.py` wraps `google-genai`. Every
+5. **LLMs have a fiscal-year recency bias — watch for it in any future
+   phase that has the model pick "the latest" anything.** Phase 3's first
+   run picked FY2024 instead of the genuinely-latest FY2025/FY2026 for
+   10/20 entities, because the model defaulted to a year that felt more
+   familiar from its own training distribution even when the source text
+   unambiguously showed a later year. Fixed by anchoring the system
+   instruction to today's date and an explicit "scan every period-end,
+   pick the single latest one on or before today" algorithm — see
+   METHODOLOGY.md §4.1 and `src/financials.py`'s `SYSTEM_INSTRUCTION` for
+   the pattern to reuse if Phase 4+ ever needs "most recent X" out of an LLM.
+6. **Gemini, not Claude/OpenAI.** `src/llm.py` wraps `google-genai`. Every
    teammate needs their **own** `.env` with their **own** `GEMINI_API_KEY`
    — `.env` is gitignored on purpose and does **not** come through on
    `git pull`. Copy `.env.example` → `.env`, fill in a key from
@@ -64,9 +74,9 @@ a phase completes.
    baseline with no key configured (clearly flagged in its output), so you
    *can* work on non-LLM code without one — but you won't get real Gen AI
    results to show until you add a key.
-6. **Two real bugs already found & fixed in Phase 2 — don't reintroduce
-   them.** Both have regression tests (`tests/test_forensics.py`,
-   `tests/test_llm.py`):
+7. **Real bugs already found & fixed — don't reintroduce them.** All have
+   regression tests (`tests/test_forensics.py`, `tests/test_llm.py`,
+   `tests/test_financials.py`):
    - `a == b` on a pandas Series containing `None`/`NaN` is **not** the
      same as scalar `a == b`: `None == None` is `False` on a Series (SQL
      NULL semantics), not `True`. This silently inflated a disagreement
@@ -80,6 +90,14 @@ a phase completes.
      `httpx.TransportError` / `TimeoutError` / `ConnectionError` in
      addition to `APIError` codes 429/500/502/503/504. Keep it that way if
      you touch retry logic.
+   - A ground-truth scorer that treats "extracted null" as *always* a
+     mismatch is wrong whenever the ground truth itself expects null (e.g.
+     `cost_of_sales` for an insurer) — it penalises the pipeline for
+     correctly declining to invent a figure. `src.financials.
+     score_against_ground_truth` special-cases an empty
+     `ground_truth_value` as "expected null"; see
+     `tests/test_financials.py`'s `test_expected_null_*` tests for the
+     shape of this bug if you write another ground-truth scorer.
 
 ## Working conventions established so far — follow these, don't reinvent
 
@@ -100,24 +118,40 @@ a phase completes.
   categories) with a real `description=` on every field — it's part of the
   JSON schema Gemini actually sees, not just documentation. See
   `forensics.py`'s `MemoExtraction` for the pattern.
-- Cross-check every LLM extraction against a deterministic baseline and
-  report a disagreement rate broken down by field, not just an aggregate —
-  see `src/forensics.py`'s `disagreement_summary` /
-  `confidence_calibration_table` for the level of detail expected. Don't
-  ship an LLM component without this; it's the 20% Gen AI criterion's
+- Cross-check every LLM extraction against *something* independent and
+  report a measurable accuracy figure, not just an aggregate vibe — two
+  patterns established so far, use whichever fits: (a) a deterministic
+  regex/rule-based baseline compared row-by-row with a disagreement rate
+  broken down by field (`src/forensics.py`'s `disagreement_summary` /
+  `confidence_calibration_table`), for when a cheap non-LLM baseline
+  exists; (b) a small hand-labelled ground-truth sample independently
+  re-verified against primary/alternate sources, scored field-by-field
+  (`src/financials.py`'s `score_against_ground_truth` +
+  `tests/financials_ground_truth.csv`), for when it doesn't. Don't ship an
+  LLM component without one of these; it's the 20% Gen AI criterion's
   measurability requirement.
-- Null propagates. **Never** fill a missing external figure (Phase 3) or
-  an unresolved extraction (Phase 2-style) with a plausible-looking
-  estimate — return `None`/null and let uncertainty widen downstream
-  (Phase 5's job).
+- Null propagates. **Never** fill a missing external figure or an
+  unresolved extraction with a plausible-looking estimate — return
+  `None`/null and let uncertainty widen downstream (Phase 5's job). Give
+  the LLM schema an explicit way to say "this field doesn't apply to this
+  entity" distinct from "not found" when the two are genuinely different
+  (see `not_applicable_fields` in `src/financials.py`) — collapsing them
+  into one null hides a real modelling fact.
 - Yield/intensity assumptions → `config/assumptions.yaml` only (Phase 4+),
   one named + sourced comment per assumption. Never inline a coefficient
   in modelling code.
+- **Spot-check extracted values against the raw source text yourself,
+  entity by entity, before trusting a clean pipeline run or a passing
+  ground-truth score** — Phase 3's fiscal-year-selection bug (see
+  "Must-know" #5) affected 10/20 entities and would not have been caught
+  by the ground-truth sample alone if that sample had been built *after*
+  the buggy run instead of independently. A green `pytest` run is not the
+  same thing as correct output.
 - New logic that isn't obviously correct by inspection (regex baselines,
-  null-handling, agreement/comparison logic) gets a `tests/test_*.py` unit
-  test before you move on — the two bugs above were both exactly this kind
-  of thing. Run `python -m pytest tests/ -q` before considering any change
-  done (22 passing as of Phase 2).
+  null-handling, agreement/comparison/scoring logic) gets a
+  `tests/test_*.py` unit test before you move on — every bug above was
+  exactly this kind of thing. Run `python -m pytest tests/ -q` before
+  considering any change done (31 passing as of Phase 3).
 - Update `METHODOLOGY.md` as you go (design rationale + a limitation you
   noticed), in the same session you build the phase — not as a last-minute
   writeup. Update this file's Session Log (below) before you end a session.
@@ -127,15 +161,16 @@ a phase completes.
 ```bash
 pip install -r requirements.txt
 cp .env.example .env      # fill in your OWN GEMINI_API_KEY
-python run_all.py                     # Phases 1-2 (everything built so far)
-python -m pytest tests/ -q            # 22 tests, all should pass, no API key needed
+python run_all.py                     # Phases 1-3 (everything built so far)
+python -m pytest tests/ -q            # 31 tests, all should pass, no API key needed
 ```
 
 Raw CSVs go in `data/` as `transactional_banking.csv`,
 `cross_border_payments.csv`, `trade_finance.csv` (gitignored — 392MB+33MB+3MB
 exceeds GitHub's 100MB single-file limit; get them from the team). Everything
-needed to inspect Phase 1–2 output *without* rerunning anything is already
-committed: `reports/`, `prompts/`, `data/processed/*.parquet`.
+needed to inspect Phase 1–3 output *without* rerunning anything is already
+committed: `reports/`, `prompts/`, `data/processed/*.parquet`,
+`data/external/raw/` (Phase 3's fetched source text).
 
 ## Session log
 
@@ -166,3 +201,43 @@ a strict schema, with a source URL + confidence flag on every figure, and
 a hand-labelled `tests/financials_ground_truth.csv` to report field-level
 accuracy against. Nothing gets invented — null propagates. Log every
 source in `reports/external_sources.md`.
+
+### 2026-08-11 — Claude (Sonnet 5), Phase 3
+
+Built Phase 3 (`src/financials.py`) end to end: 20 entities' core financials
+(revenue, cost of sales, inventory, trade receivables/payables, total debt)
+sourced from stockanalysis.com (a filings-derived aggregator, used for
+cross-company consistency — no PDFs exist, see "Must-know" #3), foreign
+revenue % from targeted per-entity research, all raw fetched text committed
+at `data/external/raw/` before any LLM touches it (same "evidence first"
+discipline as Phase 2). Gemini extraction to a strict schema mirrors
+Phase 2's shape (confidence per field, cached + logged the same way).
+
+**Found and fixed a real, significant bug**: the first full run picked the
+wrong (stale) fiscal year for 10/20 entities — a genuine LLM recency/
+anchoring bias, not a prompt-engineering afterthought; see "Must-know" #5
+and METHODOLOGY.md §4.1 for the root-cause story and the fix (explicit
+today's-date anchoring + an explicit period-selection algorithm in the
+system instruction). This is the kind of thing that's easy to miss if you
+only look at whether the pipeline *runs* cleanly rather than *spot-check
+the actual extracted values* — do the same discipline for Phase 4+.
+Also surfaced (not resolved) a genuine cross-aggregator definitional
+disagreement on Anglo American's cost of sales (METHODOLOGY.md §4.2) —
+don't be surprised if this recurs on other entities in later phases;
+disclose it, don't silently pick a source.
+
+Final: ground-truth accuracy 19/19 (100.0%) after the fix, 31/31 tests
+passing, `python run_all.py` runs Phases 1-3 end to end in ~25s (fully
+cached). `foreign_revenue_pct` coverage is honestly low (30%, 6/20) and
+`debt_maturity_profile`/`undrawn_facilities` were scoped out of the schema
+entirely (see METHODOLOGY.md §5) — both worth reconsidering if Phase 4's
+Investment Banking pillar ends up needing them more than expected.
+
+**Next agent: start Phase 4 (`src/wallet.py`) per `PLAN.md`.** This is
+where `config/assumptions.yaml` (currently an empty skeleton) gets
+populated for real — every yield/intensity coefficient named and sourced,
+never inline. Phase 2's `competitor_credit_events.parquet` (primary/
+secondary tier) and Phase 3's `financial_baseline.parquet` are both ready
+to build against. Read METHODOLOGY.md §4.3 before trusting
+`foreign_revenue_pct` or `cost_of_sales` at face value for every entity —
+both have entity-specific caveats logged, not uniform confidence.

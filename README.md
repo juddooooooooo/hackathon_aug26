@@ -58,13 +58,14 @@ src/
                                 caching, per-call usage ledger
   ingest.py                    Phase 1 -- DuckDB load + profiling report
   forensics.py                 Phase 2 -- competitor-credit memo extraction [Gen AI]
-  financials.py                Phase 3 -- external financial baseline [Gen AI]        (not yet built)
+  financials.py                Phase 3 -- external financial baseline [Gen AI]
   wallet.py                    Phase 4 -- total wallet + Syn Bank's captured share    (not yet built)
   uncertainty.py                Phase 5 -- Monte Carlo, sensitivity, triangulation     (not yet built)
   opportunity.py               Phase 6 -- expected-value opportunity ranking          (not yet built)
 app/                           Phase 8 -- Streamlit dashboard                         (not yet built)
+data/external/raw/             Phase 3's fetched source text (committed, evidence for extraction)
 data/processed/                derived tables (parquet) + the DuckDB database
-reports/                       profiling/forensics/... markdown+json reports, LLM usage ledger
+reports/                       profiling/forensics/financials/... reports, LLM usage ledger, external_sources.md
 prompts/                       every LLM call ever made, logged verbatim (Gen AI evidence)
 tests/                         pytest unit tests (regex baselines, ground-truth checks)
 run_all.py                     single reproducible entry point
@@ -82,8 +83,8 @@ happened so far. **[PLAN.md](PLAN.md)** is the full phase-by-phase backlog
 
 - [x] Phase 1 — Ingestion & profiling
 - [x] Phase 2 — Forensic extraction (Gen AI #1)
-- [ ] Phase 3 — External financial baseline (Gen AI #2) ← **next**
-- [ ] Phase 4 — Wallet model
+- [x] Phase 3 — External financial baseline (Gen AI #2)
+- [ ] Phase 4 — Wallet model ← **next**
 - [ ] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation)
 - [ ] Phase 6 — Opportunity ranking
 - [ ] Phase 7 — Bonus: cash-cycle timing, latency/cost optimisation

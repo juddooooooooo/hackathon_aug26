@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-08-11T12:07:09",
+  "namespace": "financials_baseline_extraction",
+  "model": "gemini-2.5-flash",
+  "temperature": 0.0,
+  "system_instruction": "You are a credit/financial analyst at Syn Bank, a corporate and investment bank, building an external financial baseline for a JSE-listed corporate client from research notes your team has already gathered (fetched from public filings, filings-derived data aggregators, and results announcements). You are NOT browsing the web yourself -- you only see the raw text provided to you.\n\nYour job: extract a strict set of financial figures for the most recently COMPLETED fiscal year, each with a confidence flag, from text that may span multiple sources with different fiscal-year windows, currencies, and definitions (e.g. two different \"debt\" figures, or a metric derived from a calculation shown in the notes rather than a labelled line item).\n\nRules -- these matter more than completeness:\n- NEVER invent or estimate a number that isn't supported by the text. If a figure genuinely isn't present or derivable, leave it null. A null is far more useful downstream than a plausible-looking guess -- it lets uncertainty propagate honestly instead of being silently hidden.\n- Prefer the latest full fiscal year over a TTM (trailing-twelve-month) figure when the text shows both.\n- When multiple candidate figures conflict (e.g. balance-sheet \"Total Debt\" vs. a company-stated \"adjusted net debt\"), pick the more standard/comparable one for the named field and note the alternate in source_note -- do not average or silently pick whichever is larger/smaller.\n- Distinguish \"not applicable\" (this concept doesn't exist for this business model, e.g. inventory for an insurer) from \"not found\" (concept applies but no figure was in the text) -- use not_applicable_fields for the former, leave the field null with no special flag for the latter.\n- confidence: high = directly disclosed and unambiguous; medium = derived by calculation or an accepted proxy (e.g. operating-region mix standing in for revenue-destination mix); low = directional/qualitative source, real definitional ambiguity, or a single-quarter figure standing in for an annual one.",
+  "prompt": "entity_id: E07\nentity_name: OUTsurance Group\nsector: insurance\n\n--- Research notes (fetched from public sources) ---\n\n# E07 \u2014 OUTsurance Group\n\nRetrieved: 2026-08-11. Listing used: JSE (OUT). Insurer -- no inventory/cost-of-revenue concept applies.\nSource: stockanalysis.com\n\n## Income statement\nURL: https://stockanalysis.com/quote/jse/OUT/financials/\nOnly Revenue, Operating Income, Net Income, EPS shown -- no cost-of-revenue/gross-profit\n(not a meaningful concept for an insurer). Currency: ZAR millions. FY = Jul-Jun.\nRevenue: FY2024 (Jun 30 2024) R34,133M, FY2025 (Jun 30 2025) R39,415M.\n(Re-fetched 2026-08-11 with a narrower prompt to recover exact figures after the first pass\nonly described the table structure without capturing the numbers.)\n\n## Balance sheet\nURL: https://stockanalysis.com/quote/jse/OUT/financials/balance-sheet/\nCurrency: ZAR millions. FY = Jul-Jun. No inventory or accounts-receivable line disclosed\n(insurer balance-sheet structure differs from a trading company's); \"Other Receivables\" shown\ninstead at 1,321-4,217 ZAR millions across periods (not the same concept as trade receivables).\n\n| | FY2025 (Jun'25) | FY2024 (Jun'24) | FY2023 (Jun'23) | FY2022 (Jun'22) | FY2021 (Jun'21) |\n|---|---|---|---|---|---|\n| Accounts Payable | 162 | 109 | 97 | 31 | 117 |\n| Long-Term Debt | 7 | 501 | 77 | \u2014 | 11,514 |\n| Total Debt | 386 | 1,153 | 157 | 82 | 11,632 |\n",
+  "response_schema": "FinancialBaselineExtraction",
+  "raw_response": "{\n  \"fiscal_year_end\": \"2025-06-30\",\n  \"reported_currency\": \"ZAR\",\n  \"total_revenue\": 39415,\n  \"total_revenue_confidence\": \"high\",\n  \"cost_of_sales\": null,\n  \"cost_of_sales_confidence\": null,\n  \"cost_of_sales_is_derived\": false,\n  \"inventory\": null,\n  \"inventory_confidence\": null,\n  \"trade_receivables\": null,\n  \"trade_receivables_confidence\": null,\n  \"trade_payables\": 162,\n  \"trade_payables_confidence\": \"high\",\n  \"total_debt\": 386,\n  \"total_debt_confidence\": \"high\",\n  \"foreign_revenue_pct\": null,\n  \"foreign_revenue_pct_confidence\": null,\n  \"not_applicable_fields\": [\n    \"cost_of_sales\",\n    \"inventory\",\n    \"trade_receivables\"\n  ],\n  \"source_note\": \"Figures are for the fiscal year ending June 30, 2025, as reported by stockanalysis.com. As an insurer, cost of sales, inventory, and trade receivables are not applicable concepts for OUTsurance Group.\"\n}",
+  "parsed": {
+    "fiscal_year_end": "2025-06-30",
+    "reported_currency": "ZAR",
+    "total_revenue": 39415.0,
+    "total_revenue_confidence": "high",
+    "cost_of_sales": null,
+    "cost_of_sales_confidence": null,
+    "cost_of_sales_is_derived": false,
+    "inventory": null,
+    "inventory_confidence": null,
+    "trade_receivables": null,
+    "trade_receivables_confidence": null,
+    "trade_payables": 162.0,
+    "trade_payables_confidence": "high",
+    "total_debt": 386.0,
+    "total_debt_confidence": "high",
+    "foreign_revenue_pct": null,
+    "foreign_revenue_pct_confidence": null,
+    "not_applicable_fields": [
+      "cost_of_sales",
+      "inventory",
+      "trade_receivables"
+    ],
+    "source_note": "Figures are for the fiscal year ending June 30, 2025, as reported by stockanalysis.com. As an insurer, cost of sales, inventory, and trade receivables are not applicable concepts for OUTsurance Group."
+  },
+  "input_tokens": 946,
+  "output_tokens": 304,
+  "latency_ms": 3284.5
+}

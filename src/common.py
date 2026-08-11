@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 DATA_DIR = ROOT / "data"
 PROCESSED_DIR = DATA_DIR / "processed"
+EXTERNAL_RAW_DIR = DATA_DIR / "external" / "raw"
 CONFIG_DIR = ROOT / "config"
 REPORTS_DIR = ROOT / "reports"
 PROMPTS_DIR = ROOT / "prompts"
