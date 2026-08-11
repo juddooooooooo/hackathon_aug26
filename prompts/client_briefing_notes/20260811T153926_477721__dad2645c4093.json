@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-08-11T15:39:26",
+  "namespace": "client_briefing_notes",
+  "model": "gemini-2.5-flash",
+  "temperature": 0.0,
+  "system_instruction": "You are a research analyst at Syn Bank, a South African corporate and investment bank, writing a one-page briefing note for a coverage banker ahead of a client meeting. You are given ONLY already-computed figures from Syn Bank's internal wallet-sizing and opportunity-ranking models -- you did not compute these yourself and must not second-guess, adjust, or recompute them. Your job is purely to translate structured figures into a short, clear, accurate narrative a busy senior banker can read in 30 seconds.\n\nRules:\n- NEVER invent a number, product, competitor name, or fact not present in the figures you are given.\n- Quote rand figures and percentages exactly as given (rounding for readability is fine, e.g. R193.8m).\n- If a sequencing risk, TAM-assumption caveat, or global-major flag is present in the input, you MUST mention it in `caveats` -- do not omit a disclosed limitation to make the note sound more confident than the underlying data supports.\n- Keep the tone factual and commercial, not promotional -- this is an internal working note, not marketing copy.",
+  "prompt": "entity_id: E08\nentity_name: Sanlam\nsector: insurance\nis_dual_listed_global_major: False (if true: TAM is based on GLOBAL revenue, not South-Africa-specific -- the wallet gap is a global-scale upper bound, not a realistic SA coverage target)\n\n-- Opportunity ranking (Phase 6) --\ntotal_expected_value_zar: 106016301\ntotal_wallet_gap_zar: 306089993\ntop_pillar: Transactional Banking\nwin_probability: 0.53\nany_sequencing_flag: False (if true: a Global Markets/Investment Banking opportunity here rests on a weak Transactional Banking relationship -- recommend deepening payment flow first, not leading with FX/IB)\nrelationship_strength_score (Transactional Banking share of wallet): 0.25\ntotal_unknown_capture_potential_zar: 58287100 (wallet size Syn Bank cannot currently measure its own capture of -- a diagnostic upper bound, not part of the ranked expected value)\n\n-- Financials (Phase 3) --\ntotal_revenue_R_millions: 244797",
+  "response_schema": "ClientBriefing",
+  "raw_response": "{\"headline\": \"R106.0m expected-value opportunity, anchored in Transactional Banking\", \"summary\": \"Sanlam presents a total expected-value opportunity of R106.0m, with a total wallet gap of R306.1m. The primary opportunity lies within Transactional Banking, where our current relationship strength score (share of wallet) is 0.25. We have a 0.53 win probability for this opportunity. There is also an additional R58.3m in unknown capture potential that we cannot currently measure.\", \"recommended_next_step\": \"Focus on deepening the Transactional Banking relationship to capture the identified wallet gap.\", \"caveats\": null}",
+  "parsed": {
+    "headline": "R106.0m expected-value opportunity, anchored in Transactional Banking",
+    "summary": "Sanlam presents a total expected-value opportunity of R106.0m, with a total wallet gap of R306.1m. The primary opportunity lies within Transactional Banking, where our current relationship strength score (share of wallet) is 0.25. We have a 0.53 win probability for this opportunity. There is also an additional R58.3m in unknown capture potential that we cannot currently measure.",
+    "recommended_next_step": "Focus on deepening the Transactional Banking relationship to capture the identified wallet gap.",
+    "caveats": null
+  },
+  "input_tokens": 503,
+  "output_tokens": 149,
+  "latency_ms": 1346.3
+}

@@ -139,7 +139,7 @@ definitional discrepancy on Anglo American's cost of sales rather than
 silently picking a number (§4.2). `foreign_revenue_pct` coverage is
 honestly low (30%, 6/20) — not backfilled. Debt maturity profile and
 undrawn facilities were **not** built as separate fields this phase — see
-METHODOLOGY.md §8 limitations; `total_debt`'s current/non-current split is
+METHODOLOGY.md §9 limitations; `total_debt`'s current/non-current split is
 available in the raw source files if Phase 4 needs a coarser proxy.
 
 ## Phase 4 — Wallet model ✅ DONE
@@ -294,7 +294,13 @@ found in Phase 5 (this portfolio's clients are all already broad
 product users) — disclosed, not hidden. Full derivation: METHODOLOGY.md
 §7.
 
-## Phase 7 — Bonus modules ⬜ (only after 1–6 are working)
+## Phase 7 — Bonus modules ⬜ (only after 1–6 are working; deprioritised behind Phase 8)
+
+> Built AFTER Phase 8 instead of before it — hackathon.txt's Deliverables
+> list makes the dashboard a required submission component; this phase is
+> explicitly labelled "bonus" in hackathon.txt itself. See CLAUDE.md's
+> Phase 8 session log entry for the full reasoning. Still worth doing if
+> time allows — not dropped, just re-sequenced.
 
 (a) **Cash cycle / payment timing**: per entity, model days between
 outbound supplier legs and inbound collections to suggest optimal
@@ -310,7 +316,7 @@ hard cases. Produce a before/after latency and cost chart.
 > Phase 7 is where it gets used, with a real before/after comparison
 > against Phase 2's `gemini-2.5-flash` baseline.
 
-## Phase 8 — Dashboard ⬜
+## Phase 8 — Dashboard ✅ DONE
 
 Streamlit. Must contain, per the brief's deliverables list:
 - portfolio-level summary ranking all 20 clients by expected value
@@ -323,6 +329,32 @@ Every number shown must trace back to a computed value. Briefing notes are
 generated from model output, not free-generated — state this on the page.
 Graph visuals: constrain to one client at a time, top-N counterparties by
 value, annotated with the insight. No 241k-edge hairballs.
+
+**Built as:** `app/dashboard.py` (Streamlit, 6 pages: Portfolio Summary,
+Client Drill-Down, Opportunity Heatmap, AI Briefing Notes, Competitor-
+Credit Finding, Rigor & Assumptions — the last one added beyond the
+brief's minimum since 30% of the mark scheme is analytical rigor and it
+deserved visibility). `src/briefing.py` is the new (third) Gen AI
+component the AI-briefing-notes requirement needed — generates one for
+all 20 entities (not just the required 3), grounded strictly in Phase
+2–6's already-computed output, through the same `generate_structured`
+pipeline (prompt logging, caching) every other Gen AI phase uses. Output:
+`data/processed/briefing_notes.parquet`, `reports/briefing_notes.md`,
+`prompts/client_briefing_notes/*.json`.
+
+Run: `streamlit run app/dashboard.py` (separate from `run_all.py`'s CLI
+chain, which now includes `briefing` as its 7th phase to keep the
+dashboard's briefing notes fresh).
+
+**Verified by actually driving the running app** (Playwright, headless,
+screenshotted all 6 pages, zero console errors), not just checking the
+code imports — caught and fixed two real issues this way: the wallet-gap-
+by-pillar chart's category order wasn't pinned (varied per entity,
+breaking cross-client comparability), and the briefing-notes page
+defaulted to showing global majors first (their inflated expected-value
+figures dominate any unfiltered sort) instead of the realistic SA-
+domestic opportunities every other page treats as primary. Full
+derivation: METHODOLOGY.md §8.
 
 ---
 

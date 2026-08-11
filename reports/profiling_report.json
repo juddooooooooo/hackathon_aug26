@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T15:06:00",
+  "generated_at": "2026-08-11T15:50:44",
   "entity_master": [
     {
       "entity_id": "E01",
@@ -189,8 +189,8 @@
         "n": 2802875,
         "min": 205.35,
         "max": 64832717.95764583,
-        "sum": 405442910068.7129,
-        "mean": 144652.5121772155
+        "sum": 405442910068.713,
+        "mean": 144652.51217721554
       },
       "n_distinct_entities": 20,
       "categoricals": {
@@ -567,8 +567,8 @@
         "counterparty_country": {
           "n_distinct": 34,
           "value_counts": {
-            "Netherlands": 1496,
             "Switzerland": 1496,
+            "Netherlands": 1496,
             "United Kingdom": 1477,
             "India": 1461,
             "China": 1455,
@@ -616,8 +616,8 @@
             "copper": 1273,
             "telecom_equipment": 1254,
             "pharmaceuticals": 1242,
-            "iron_ore": 1240,
             "chemicals": 1240,
+            "iron_ore": 1240,
             "gold": 1234,
             "agri_produce": 1205,
             "consumer_goods": 1200,
@@ -666,9 +666,9 @@
     },
     "transactional_banking": {
       "n_memo_rows": 3657.0,
-      "sum_memo_zar": 597220360.6299999,
+      "sum_memo_zar": 597220360.6300001,
       "n_bank_beneficiary": 1544.0,
-      "sum_bank_beneficiary_zar": 452369428.13,
+      "sum_bank_beneficiary_zar": 452369428.12999994,
       "n_non_bank_beneficiary": 2113.0,
       "sum_non_bank_beneficiary_zar": 144850932.50000003
     }

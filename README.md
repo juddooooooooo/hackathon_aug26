@@ -38,10 +38,13 @@ run the whole pipeline without a key, just without the Gen AI components.
 ## Run
 
 ```bash
-python run_all.py                    # every phase built so far, in order
+python run_all.py                    # every phase built so far, in order (Phases 1-6 + Phase 8's briefing step)
 python run_all.py --until forensics   # stop after Phase 2
 python run_all.py --no-llm            # skip all LLM calls
 python run_all.py --sample 200        # Phase 2: sample instead of the full ~4,199 memo rows
+python run_all.py --mc-iterations 200 # Phase 5: faster/rougher Monte Carlo (default 2000, ~3min)
+
+streamlit run app/dashboard.py        # Phase 8 dashboard -- interactive, run separately
 ```
 
 Every phase is also independently runnable, e.g. `python -m src.ingest` or
@@ -62,7 +65,8 @@ src/
   wallet.py                    Phase 4 -- total wallet + Syn Bank's captured share
   uncertainty.py                Phase 5 -- Monte Carlo, sensitivity, triangulation
   opportunity.py               Phase 6 -- expected-value opportunity ranking
-app/                           Phase 8 -- Streamlit dashboard                         (not yet built)
+  briefing.py                  Phase 8 support -- AI client briefing notes [Gen AI #3]
+app/dashboard.py                Phase 8 -- Streamlit dashboard (run: streamlit run app/dashboard.py)
 data/external/raw/             Phase 3's fetched source text (committed, evidence for extraction)
 data/processed/                derived tables (parquet) + the DuckDB database
 reports/                       profiling/forensics/financials/... reports, LLM usage ledger, external_sources.md
@@ -87,5 +91,7 @@ happened so far. **[PLAN.md](PLAN.md)** is the full phase-by-phase backlog
 - [x] Phase 4 — Wallet model
 - [x] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation)
 - [x] Phase 6 — Opportunity ranking
-- [ ] Phase 7 — Bonus: cash-cycle timing, latency/cost optimisation
-- [ ] Phase 8 — Dashboard ← **next** (see CLAUDE.md session log for the Phase 7-vs-8 ordering note)
+- [ ] Phase 7 — Bonus: cash-cycle timing, latency/cost optimisation ← **only phase left, optional**
+- [x] Phase 8 — Dashboard + AI briefing notes (Gen AI #3) — built ahead of Phase 7, see CLAUDE.md session log
+
+All of hackathon.txt's required deliverables are built. Phase 7 is explicitly "bonus" in the brief.

@@ -1,6 +1,6 @@
 # Phase 1 — Ingestion & Profiling Report
 
-Generated: 2026-08-11T15:06:00
+Generated: 2026-08-11T15:50:44
 
 > **Every rand figure below is GROSS FLOW / EXPOSURE observed in the ledgers -- not bank revenue and not share of wallet.** Converting flow into revenue requires an explicit yield assumption (bps, fee-per-payment, NII margin, ...); that conversion happens in Phase 4 (`src/wallet.py`) using named, sourced assumptions in `config/assumptions.yaml`. See hackathon.txt's domain rule and METHODOLOGY.md.
 ## Entity master (20 expected clients — validated)
@@ -293,8 +293,8 @@ Generated: 2026-08-11T15:06:00
 
 | value                |    n |
 |:---------------------|-----:|
-| Netherlands          | 1496 |
 | Switzerland          | 1496 |
+| Netherlands          | 1496 |
 | United Kingdom       | 1477 |
 | India                | 1461 |
 | China                | 1455 |
@@ -322,8 +322,8 @@ Generated: 2026-08-11T15:06:00
 | copper                    | 1273 |
 | telecom_equipment         | 1254 |
 | pharmaceuticals           | 1242 |
-| iron_ore                  | 1240 |
 | chemicals                 | 1240 |
+| iron_ore                  | 1240 |
 | gold                      | 1234 |
 | agri_produce              | 1205 |
 | consumer_goods            | 1200 |

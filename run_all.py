@@ -19,8 +19,10 @@ Phases (see METHODOLOGY.md for what each one does and why):
     4. wallet     -- src/wallet.py     (total wallet + Syn Bank share)
     5. uncertainty-- src/uncertainty.py(Monte Carlo, sensitivity, triangulation)
     6. opportunity-- src/opportunity.py(expected-value ranking)
-    7. bonus      -- cash-cycle timing + latency/cost optimisation                       -- not yet built
-    8. dashboard  -- app/ (Streamlit)                                                    -- not yet built
+    7. briefing   -- src/briefing.py  (AI client briefing notes)          [Gen AI #3, Phase 8 support]
+       bonus      -- cash-cycle timing + latency/cost optimisation                       -- not yet built
+    8. dashboard  -- app/dashboard.py (Streamlit -- run separately: `streamlit run app/dashboard.py`,
+                     not part of this CLI chain; reads briefing's output + everything above)
 """
 from __future__ import annotations
 
@@ -33,7 +35,7 @@ from src.common import configure_logging
 
 logger = logging.getLogger("run_all")
 
-PHASES = ["ingest", "forensics", "financials", "wallet", "uncertainty", "opportunity"]  # extended as later phases are built
+PHASES = ["ingest", "forensics", "financials", "wallet", "uncertainty", "opportunity", "briefing"]  # extended as later phases are built
 
 
 def main() -> None:
@@ -107,6 +109,15 @@ def main() -> None:
         from src.opportunity import main as opportunity_main
 
         opportunity_main()
+
+    if "briefing" in run_until:
+        logger.info("=" * 70)
+        logger.info("PHASE 8 SUPPORT -- AI Client Briefing Notes (Gen AI #3)")
+        logger.info("=" * 70)
+        from src.briefing import main as briefing_main
+
+        sys.argv = ["briefing"]
+        briefing_main()
 
     elapsed = time.perf_counter() - t_start
     logger.info("=" * 70)

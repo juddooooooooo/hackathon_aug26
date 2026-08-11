@@ -749,8 +749,119 @@ underlying TAM assumption undercounts a demonstrably high-cash-flow
 retailer, and Phase 5's independent revealed-presence estimator already
 corroborated this (§6.3).
 
-## 8. Limitations (running list — extended every phase)
+## 8. Phase 8 — Dashboard (`app/dashboard.py`) and AI briefing notes (`src/briefing.py`) [Gen AI #3]
 
+Built ahead of Phase 7 (bonus modules) — hackathon.txt's Deliverables list
+makes the dashboard a required submission component, while Phase 7 is
+explicitly labelled "bonus" in both hackathon.txt and PLAN.md. See
+CLAUDE.md's session log for the full reasoning.
+
+### 8.1 AI-generated client briefing notes — the third Gen AI component
+
+hackathon.txt: *"AI-generated briefing notes for AT LEAST 3 clients...
+generated from model output, not free-generated — state this on the
+page."* `src/briefing.py` generates one for **all 20 entities** (well
+beyond the minimum), through the same `src.llm.generate_structured`
+pipeline as Phases 2 and 3 (prompt logging, caching, usage ledger — see
+`prompts/client_briefing_notes/*.json`).
+
+**The "generated from model output, not free-generated" constraint is
+enforced structurally, not just by instruction**: the prompt fed to
+Gemini contains ONLY already-computed figures — Phase 6's expected value/
+wallet gap/win probability, Phase 2's competitor-credit flow by
+confidence tier, Phase 3's revenue/foreign-revenue/debt, and explicit
+boolean flags for every disclosed caveat (`is_global_major`,
+`any_sequencing_flag`, `tam_assumption_breach`). The system instruction
+requires every disclosed flag to be surfaced in `caveats` if true, and
+forbids inventing a number, product, or fact — the model's only job is
+turning structured figures into readable prose, never sourcing a claim
+itself.
+
+**A real gap found and fixed before generating the full batch**: the
+first version's context builder omitted `tam_assumption_breach` entirely
+— Pepkor Holdings' briefing (the one entity this flag applies to) came
+back with `caveats: None`, silently dropping a finding already
+established in Phase 4/5/6. Added the flag to the context and an explicit
+instruction to surface it; regenerated — Pepkor's note now correctly
+states the true opportunity is plausibly larger than the ranked figure
+shows. Caught by actually reading the generated output for the specific
+entity most likely to expose the gap, not by assuming the schema was
+complete because the code ran without error — the same discipline every
+earlier phase's bug-catches relied on.
+
+### 8.2 Dashboard — every number traces to a Phase 1–6 parquet file
+
+Six views, all reading `data/processed/*.parquet` directly (a live
+DuckDB aggregation for the one place raw-ledger detail is needed — the
+per-client top-counterparties chart, an explicit hackathon.txt
+requirement, see below):
+
+- **Portfolio Summary** — the ranked list `reports/opportunity_report.md`
+  already produces, rendered as a chart + table, plus the Phase 5 Monte
+  Carlo credible interval as the headline share figure (not the bare
+  point estimate). Global majors shown in a clearly separate section
+  throughout, never mixed into the primary ranking.
+- **Client Drill-Down** — per-entity KPIs, wallet gap by pillar (fixed
+  pillar order and colour across every entity, so a banker can compare
+  entities without re-reading the axis), the 4 right-to-win signals, and
+  a financial snapshot.
+- **Opportunity Heatmap** — client × pillar, sequential single-hue
+  colourscale (magnitude encoding, per the dataviz method), SA-domestic
+  entities only.
+- **AI Briefing Notes** — §8.1's output, with the required "generated
+  from model output" disclosure prominently on the page, defaulting to
+  the top 5 SA-domestic entities (not global majors, which would
+  otherwise dominate any expected-value sort).
+- **Competitor-Credit Finding** — the R692.8m primary / R307.9m secondary
+  headline as dedicated KPIs, a by-entity stacked chart, and a sample of
+  the actual LLM-extracted evidence (memo text, classification, reasoning)
+  — the narrative spine of the whole submission gets its own page, not a
+  buried table.
+- **Rigor & Assumptions** — Phase 5's Monte Carlo histogram, tornado
+  chart, below-sector-line entities, and Bonferroni-significant trend
+  entities. Not on hackathon.txt's required list, added because 30% of
+  the mark scheme is analytical rigor and a dashboard that hides that
+  work under-sells it.
+
+**Top-N counterparties, one client at a time** (hackathon.txt: *"Graph
+visuals: constrain to one client at a time, top-N counterparties by
+value... No 241k-edge hairballs"*): a live DuckDB query, top 10 by value
+across all 3 ledgers for the SELECTED client only — never a network graph
+of the full dataset. Known competitor-credit beneficiaries
+(`src.common.KNOWN_COMPETITOR_BENEFICIARIES`) are highlighted in the
+status-critical colour with a caption explaining why, connecting this
+view back to the Phase 2 finding rather than presenting it as an
+unexplained colour choice.
+
+**Verified by actually driving the running app**, not just checking the
+code imports cleanly: launched via `streamlit run`, driven headlessly
+with Playwright through all 6 pages, screenshots reviewed, zero console
+errors. Caught and fixed two real issues this way that static review
+would have missed — the pillar chart's category order wasn't pinned
+(varied entity to entity, undermining cross-client comparability) and the
+briefing-notes page's default selection led with global majors (inflated
+figures) instead of the realistic SA-domestic opportunities every other
+page treats as primary.
+
+## 9. Limitations (running list — extended every phase)
+
+- **AI briefing notes inherit every upstream limitation already disclosed
+  in Phases 2–6** — they are a faithful narration of the computed figures,
+  not an independent check on them. A briefing note reads as more
+  confident prose than the underlying numbers necessarily deserve unless
+  the reader has also seen the `caveats` field (or read this document);
+  the dashboard surfaces `caveats` prominently for exactly this reason,
+  but a printed/exported briefing note without that context would not.
+- **Phase 7 (bonus modules — cash-cycle timing, LLM latency/cost
+  optimisation) was not built this session**, in favour of Phase 8 — see
+  CLAUDE.md's session log for the explicit reasoning (Phase 8 is a
+  required deliverable per hackathon.txt, Phase 7 is explicitly optional).
+  Not an oversight; a scoping call, disclosed as one.
+- **The dashboard was verified by driving it manually (Playwright,
+  screenshots, console-error checks), not by an automated UI test suite**
+  — there is no `tests/test_dashboard.py`. A future regression in
+  `app/dashboard.py` would not be caught by `pytest tests/ -q` the way a
+  `src/` module's regression would be.
 - **Phase 6's `win_probability` is a 4-signal weighted heuristic, not a
   calibrated probability** — there is no historical win/loss outcome data
   anywhere in the provided files to calibrate against (this is a common

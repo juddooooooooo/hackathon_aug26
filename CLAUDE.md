@@ -5,7 +5,7 @@ Read this file first. Then:
 - **`PLAN.md`** — the full phase-by-phase backlog (authoritative scope, what's
   done, what's next, verbatim spec for unbuilt phases).
 - **`METHODOLOGY.md`** — rationale, data findings, and limitations for what
-  IS built. Every assumption behind Phase 1–6 lives here.
+  IS built. Every assumption behind Phase 1–6 and Phase 8 lives here.
 - **`hackathon.txt`** — the official brief, for context on what's being judged.
 
 Do not start writing phase code from memory of what "share of wallet
@@ -13,7 +13,7 @@ hackathons usually look like" — this repo has already made a lot of
 specific, non-obvious decisions (see below). Read PLAN.md + METHODOLOGY.md
 first or you will redo work or contradict an earlier decision.
 
-## Status: Phase 6 of 8 complete
+## Status: Phase 8 of 8 complete (Phase 7 skipped for now, see below)
 
 - [x] Phase 1 — Ingestion & profiling
 - [x] Phase 2 — Forensic extraction (Gen AI #1)
@@ -21,8 +21,12 @@ first or you will redo work or contradict an earlier decision.
 - [x] Phase 4 — Wallet model
 - [x] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation)
 - [x] Phase 6 — Opportunity ranking
-- [ ] Phase 7 — Bonus modules (cash-cycle timing, latency/cost optimisation)
-- [ ] Phase 8 — Dashboard **← next (see latest session log entry for the Phase 7-vs-8 ordering call)**
+- [ ] Phase 7 — Bonus modules (cash-cycle timing, latency/cost optimisation) **← only phase left**
+- [x] Phase 8 — Dashboard (+ AI briefing notes, Gen AI #3) — built ahead of Phase 7, see session log
+
+All of hackathon.txt's REQUIRED deliverables are now built. Phase 7 is
+explicitly "bonus" in the brief — worth doing if there's time, not a gap
+in the submission if there isn't.
 
 Keep this checklist, `README.md`'s, and `PLAN.md`'s checkboxes in sync when
 a phase completes.
@@ -131,7 +135,19 @@ a phase completes.
    is Transactional Banking for all 20 entities by design (§7.6) — a
    dashboard drill-down should still show all 3 pillars per entity
    (`opportunity_ranking_pillar.parquet`), not just the top one.
-9. **Real bugs already found & fixed — don't reintroduce them.** All have
+9. **Phase 8 facts, if you're building Phase 7 (the only phase left)**:
+   there's now a THIRD Gen AI component (`src/briefing.py`, namespace
+   `client_briefing_notes`) — if Phase 7's latency/cost work wants a
+   second data point beyond Phase 2's `gemini-2.5-flash` baseline, this
+   is available too, and already logs latency/tokens to the same
+   `reports/llm_usage_log.jsonl`. The dashboard (`app/dashboard.py`) is
+   NOT part of `run_all.py`'s CLI chain (it's `streamlit run`, an
+   interactive app, not a batch step) — `run_all.py`'s `briefing` step
+   only regenerates the briefing notes the dashboard reads, nothing
+   dashboard-specific needs to change if you extend the pipeline further
+   upstream. If Phase 7 produces new output worth surfacing, add a 7th
+   dashboard page rather than a separate app.
+10. **Real bugs already found & fixed — don't reintroduce them.** All have
    regression tests (`tests/test_forensics.py`, `tests/test_llm.py`,
    `tests/test_financials.py`):
    - `a == b` on a pandas Series containing `None`/`NaN` is **not** the
@@ -218,16 +234,18 @@ a phase completes.
 ```bash
 pip install -r requirements.txt
 cp .env.example .env      # fill in your OWN GEMINI_API_KEY
-python run_all.py                     # Phases 1-6 (everything built so far, ~3-4 min -- Phase 5's
-                                       #   Monte Carlo defaults to 2000 iterations; --mc-iterations 200
-                                       #   for a faster/rougher run)
-python -m pytest tests/ -q            # 67 tests, all should pass, no API key needed
+python run_all.py                     # Phases 1-6 + the Phase 8 briefing-notes step (everything
+                                       #   built so far EXCEPT Phase 7, which is still open),
+                                       #   ~3-4 min -- Phase 5's Monte Carlo defaults to 2000
+                                       #   iterations; --mc-iterations 200 for a faster/rougher run
+streamlit run app/dashboard.py        # Phase 8 dashboard -- separate from run_all.py, interactive
+python -m pytest tests/ -q            # 70 tests, all should pass, no API key needed
 ```
 
 Raw CSVs go in `data/` as `transactional_banking.csv`,
 `cross_border_payments.csv`, `trade_finance.csv` (gitignored — 392MB+33MB+3MB
 exceeds GitHub's 100MB single-file limit; get them from the team). Everything
-needed to inspect Phase 1–6 output *without* rerunning anything is already
+needed to inspect Phase 1–6/8 output *without* rerunning anything is already
 committed: `reports/`, `prompts/`, `data/processed/*.parquet`,
 `data/external/raw/` (Phase 3's fetched source text).
 
@@ -473,3 +491,51 @@ next step for a submission that has to ship, not just score well on
 technical merit. If you build Phase 8, `data/processed/opportunity_ranking_entity.parquet`
 is the direct source for the portfolio-summary view (see "Must-know" #8)
 — don't recompute it inside the dashboard.
+
+### 2026-08-11 — Claude (Sonnet 5), Phase 8 (same day, continued session)
+
+User picked Phase 8 over Phase 7 (asked explicitly rather than assumed —
+see the prior entry's recommendation). Built `src/briefing.py` (Gen AI
+component #3 — AI client briefing notes, all 20 entities, grounded
+strictly in Phase 2-6 output via the same `generate_structured` pipeline
+every other Gen AI phase uses) and `app/dashboard.py` (Streamlit, 6 pages:
+Portfolio Summary, Client Drill-Down, Opportunity Heatmap, AI Briefing
+Notes, Competitor-Credit Finding, Rigor & Assumptions). Loaded the
+`dataviz` skill before writing any chart code — categorical/sequential/
+status colours below are its validated reference palette, not picked by
+eye.
+
+**Found and fixed two real gaps, both by actually checking the output,
+not by assuming the code was correct because it ran:**
+- `src/briefing.py`'s context builder omitted `tam_assumption_breach`
+  entirely — Pepkor's briefing (the one entity it applies to) silently
+  dropped a finding already established three phases ago. Caught by
+  reading Pepkor's specific output, not by a general review. Fixed, all
+  20 briefings regenerated.
+- The dashboard was verified by actually launching it (`streamlit run`)
+  and driving it headlessly with Playwright through all 6 pages —
+  screenshots reviewed, `console --errors` checked (zero). This caught
+  two real issues a code read would not have: the wallet-gap-by-pillar
+  chart's category order wasn't pinned (varied per entity, breaking
+  cross-client comparability — fixed with an explicit `Categorical`
+  dtype), and the AI Briefing Notes page defaulted to showing global
+  majors first (their inflated expected-value figures dominate any
+  unfiltered sort) instead of the SA-domestic entities every other page
+  treats as primary. **Lesson for whoever builds Phase 7 or touches the
+  dashboard again: `pytest` passing and the app launching without a
+  Python exception are NOT the same as the app being correct — drive it
+  and look at it.**
+
+70/70 tests passing (3 new, `tests/test_briefing.py` — `test_uncertainty.py`-
+style pure-function tests; no `tests/test_dashboard.py`, the dashboard was
+verified by driving it, not by a unit-test suite, see METHODOLOGY.md §9
+limitations). `run_all.py`'s `briefing` step regenerates the dashboard's
+AI notes (the dashboard itself is `streamlit run app/dashboard.py`,
+separate from the CLI chain — it's an interactive app, not a batch step).
+Docs updated: METHODOLOGY.md (§8, both sub-sections + limitations),
+CLAUDE.md (must-know #9 + this entry), PLAN.md, README.md.
+
+**All of hackathon.txt's REQUIRED deliverables are now built.** Only
+Phase 7 (explicitly "bonus" in the brief) remains open — see PLAN.md for
+its spec (cash-cycle timing, LLM latency/cost optimisation) if there's
+time to build it. If not, this is a complete, submittable pipeline as-is.
