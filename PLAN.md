@@ -139,7 +139,7 @@ definitional discrepancy on Anglo American's cost of sales rather than
 silently picking a number (§4.2). `foreign_revenue_pct` coverage is
 honestly low (30%, 6/20) — not backfilled. Debt maturity profile and
 undrawn facilities were **not** built as separate fields this phase — see
-METHODOLOGY.md §9 limitations; `total_debt`'s current/non-current split is
+METHODOLOGY.md §10 limitations; `total_debt`'s current/non-current split is
 available in the raw source files if Phase 4 needs a coarser proxy.
 
 ## Phase 4 — Wallet model ✅ DONE
@@ -294,17 +294,34 @@ found in Phase 5 (this portfolio's clients are all already broad
 product users) — disclosed, not hidden. Full derivation: METHODOLOGY.md
 §7.
 
-## Phase 7 — Bonus modules ⬜ (only after 1–6 are working; deprioritised behind Phase 8)
+## Phase 7 — Bonus modules ✅ DONE (built after 1–6 and 8, per the re-sequencing below)
 
 > Built AFTER Phase 8 instead of before it — hackathon.txt's Deliverables
 > list makes the dashboard a required submission component; this phase is
 > explicitly labelled "bonus" in hackathon.txt itself. See CLAUDE.md's
-> Phase 8 session log entry for the full reasoning. Still worth doing if
-> time allows — not dropped, just re-sequenced.
+> Phase 8 session log entry for the full reasoning.
 
 (a) **Cash cycle / payment timing**: per entity, model days between
 outbound supplier legs and inbound collections to suggest optimal
 engagement timing.
+
+**Built as:** `src/cash_cycle.py`. The literal "days between" ask was
+checked against the data FIRST and doesn't hold at day grain — volume-
+weighted day-of-month for `collections` vs `supplier_payments` converges
+to the same day (~15-16) for every one of the 20 entities, because daily
+volume within a month is ~uniform (7-8% CV) and day-of-week volume is
+uniform too (<1% CV). Disclosed as a dead signal, the same discipline
+already applied to the FX currency-pair dead signal (§6.3) and
+`breadth_score` clustering (§7.2), rather than manufacturing a ranking
+from noise straddling a 30-day wraparound. Pivoted to the grain the data
+DOES support: month-of-year seasonality. 7 of 20 entities clear a 15% CV
+threshold, and the pattern is sector-coherent — all 4 consumer/retail
+entities (Shoprite, Bid Corporation, Pepkor, Clicks) rank in the top 5,
+every one peaking in December (pre-Christmas retail volume). No revenue
+figure is estimated (descriptive/behavioural only, per the assumption-
+naming discipline). Output: `data/processed/cash_cycle_timing.parquet`,
+`reports/cash_cycle_report.md`, `reports/cash_cycle_chart.png`. 3 tests
+in `tests/test_cash_cycle.py`.
 
 (b) **Latency**: instrument the LLM pipeline, add caching, batching, and
 route simple classification to a small model reserving the large one for
@@ -312,9 +329,30 @@ hard cases. Produce a before/after latency and cost chart.
 
 > Phase 2 already has the raw material for (b): `src/llm.py` logs latency
 > + token counts for every call to `reports/llm_usage_log.jsonl`, and
-> `MODEL_SMALL` (`gemini-2.5-flash-lite`) is already wired up but unused —
-> Phase 7 is where it gets used, with a real before/after comparison
-> against Phase 2's `gemini-2.5-flash` baseline.
+> `MODEL_SMALL` is already wired up but unused — Phase 7 is where it gets
+> used, with a real before/after comparison against Phase 2's
+> `gemini-2.5-flash` baseline.
+
+**Built as:** `src/latency_optimization.py`. Caching/prompt-logging were
+already live since Phase 2 (`src.llm.generate_structured`) — this module
+adds the piece that wasn't built yet: routing, using Phase 2's existing
+`regex_confidence` signal (0.85 = explicit keyword match = "simple", 0.40
+= "hard") to send simple rows to `MODEL_SMALL`, hard rows staying on
+`MODEL_DEFAULT` exactly as Phase 2 already ran them. `gemini-2.5-flash-lite`
+(the originally-planned `MODEL_SMALL`) returned a 404 "no longer available
+to new users" on a live call — swapped to `gemini-3.1-flash-lite`
+(confirmed working, pricing sourced from ai.google.dev/gemini-api/docs/pricing).
+"Before" is Phase 2's REAL historical run (`reports/llm_usage_log.jsonl`,
+not resimulated); "after" extrapolates a fresh 100-row `MODEL_SMALL`
+sample to the full 4,199-row workload. Safety check: 100% `facility_type`
+agreement between the fresh `MODEL_SMALL` answers and Phase 2's original
+`MODEL_DEFAULT` answers on the same rows. Result: 11% cost saved, ~flat
+compute time (gemini-3.1-flash-lite's price gap vs. gemini-2.5-flash is
+narrower than the originally-planned pairing, and it isn't reliably
+faster per-call — reported plainly rather than only showing the metric
+that improved). Output: `data/processed/latency_optimization_sample.parquet`,
+`reports/latency_optimization_report.md`, `reports/latency_optimization_chart.png`.
+5 tests in `tests/test_latency_optimization.py`.
 
 ## Phase 8 — Dashboard ✅ DONE
 

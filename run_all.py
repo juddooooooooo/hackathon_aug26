@@ -13,16 +13,17 @@ Usage:
     python run_all.py --mc-iterations 200  # uncertainty: faster/rougher Monte Carlo (default 2000, ~3min)
 
 Phases (see METHODOLOGY.md for what each one does and why):
-    1. ingest     -- src/ingest.py     (DuckDB load + profiling report)
-    2. forensics  -- src/forensics.py  (competitor-credit memo extraction) [Gen AI #1]
-    3. financials -- src/financials.py (external financial baseline)       [Gen AI #2]
-    4. wallet     -- src/wallet.py     (total wallet + Syn Bank share)
-    5. uncertainty-- src/uncertainty.py(Monte Carlo, sensitivity, triangulation)
-    6. opportunity-- src/opportunity.py(expected-value ranking)
-    7. briefing   -- src/briefing.py  (AI client briefing notes)          [Gen AI #3, Phase 8 support]
-       bonus      -- cash-cycle timing + latency/cost optimisation                       -- not yet built
-    8. dashboard  -- app/dashboard.py (Streamlit -- run separately: `python -m streamlit run app/dashboard.py`,
-                     not part of this CLI chain; reads briefing's output + everything above)
+    1. ingest      -- src/ingest.py      (DuckDB load + profiling report)
+    2. forensics   -- src/forensics.py   (competitor-credit memo extraction) [Gen AI #1]
+    3. financials  -- src/financials.py  (external financial baseline)       [Gen AI #2]
+    4. wallet      -- src/wallet.py      (total wallet + Syn Bank share)
+    5. uncertainty -- src/uncertainty.py (Monte Carlo, sensitivity, triangulation)
+    6. opportunity -- src/opportunity.py (expected-value ranking)
+    7. briefing    -- src/briefing.py    (AI client briefing notes)          [Gen AI #3, Phase 8 support]
+    8. cash_cycle  -- src/cash_cycle.py  (Phase 7 bonus (a): cash-cycle/seasonality timing, no LLM)
+    9. latency_opt -- src/latency_optimization.py (Phase 7 bonus (b): model-routing before/after -- skipped by --no-llm)
+       dashboard   -- app/dashboard.py (Streamlit -- run separately: `python -m streamlit run app/dashboard.py`,
+                      not part of this CLI chain; reads briefing's output + everything above)
 """
 from __future__ import annotations
 
@@ -35,7 +36,7 @@ from src.common import configure_logging
 
 logger = logging.getLogger("run_all")
 
-PHASES = ["ingest", "forensics", "financials", "wallet", "uncertainty", "opportunity", "briefing"]  # extended as later phases are built
+PHASES = ["ingest", "forensics", "financials", "wallet", "uncertainty", "opportunity", "briefing", "cash_cycle", "latency_opt"]
 
 
 def main() -> None:
@@ -118,6 +119,25 @@ def main() -> None:
 
         sys.argv = ["briefing"]
         briefing_main()
+
+    if "cash_cycle" in run_until:
+        logger.info("=" * 70)
+        logger.info("PHASE 7(a) BONUS -- Cash-Cycle / Payment-Timing")
+        logger.info("=" * 70)
+        from src.cash_cycle import main as cash_cycle_main
+
+        cash_cycle_main()
+
+    if "latency_opt" in run_until:
+        if args.no_llm:
+            logger.info("Skipping Phase 7(b) latency/cost optimisation -- --no-llm was passed and this phase is LLM-only.")
+        else:
+            logger.info("=" * 70)
+            logger.info("PHASE 7(b) BONUS -- Latency & Cost Optimisation")
+            logger.info("=" * 70)
+            from src.latency_optimization import main as latency_opt_main
+
+            latency_opt_main()
 
     elapsed = time.perf_counter() - t_start
     logger.info("=" * 70)

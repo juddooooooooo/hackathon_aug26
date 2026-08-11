@@ -46,7 +46,13 @@ load_dotenv(ROOT / ".env")
 # model for easy classification, escalate to the bigger model only for hard
 # cases). Override via env var if a model id is ever renamed/retired.
 MODEL_DEFAULT = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-MODEL_SMALL = os.environ.get("GEMINI_MODEL_SMALL", "gemini-2.5-flash-lite")
+# gemini-2.5-flash-lite (the original choice here) returned a 404 "no longer
+# available to new users" when Phase 7 first exercised MODEL_SMALL in a real
+# call (2026-08-11) -- gemini-2.5-flash itself (MODEL_DEFAULT) was unaffected
+# and still works. gemini-3.1-flash-lite confirmed working via a live
+# generate_content call the same day; see src/latency_optimization.py for
+# its sourced pricing.
+MODEL_SMALL = os.environ.get("GEMINI_MODEL_SMALL", "gemini-3.1-flash-lite")
 
 _client: Optional[genai.Client] = None
 T = TypeVar("T", bound=BaseModel)

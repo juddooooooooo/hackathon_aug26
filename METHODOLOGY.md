@@ -906,7 +906,114 @@ Python-rendered charts pick up the new theme on the next full page
 reload. Not fixed (no clean fix without client-side JS); harmless in
 practice since a full reload is the normal way this app gets opened.
 
-## 9. Limitations (running list — extended every phase)
+## 9. Phase 7 — Bonus modules (`src/cash_cycle.py`, `src/latency_optimization.py`)
+
+Built after Phases 1–6 and 8, per the re-sequencing explained in §8's
+opening note — hackathon.txt labels this phase "bonus" explicitly.
+
+### 9.1 Cash-cycle / payment timing (`src/cash_cycle.py`)
+
+hackathon.txt's ask, verbatim: *"per entity, model days between outbound
+supplier legs and inbound collections to suggest optimal engagement
+timing."*
+
+**The literal ask was checked against the data before building anything,
+and doesn't hold at day grain.** Volume-weighted day-of-month for
+`collections` (inbound) vs `supplier_payments` (outbound) converges to
+the same day (~15–16) for every one of the 20 entities: daily volume
+within a month has only a 7–8% coefficient of variation (close to what a
+uniform, non-clustered distribution would produce), and day-of-week
+volume is flatter still (<1% CV — no weekday/weekend pattern either). At
+that grain, "days between" is noise straddling a 30-day wraparound
+boundary, not a per-entity signal. **Disclosed as a dead signal**, the
+same discipline this project already applied to the FX currency-pair dead
+signal (§6.3) and `breadth_score` clustering (§7.2) — reporting a null
+result honestly rather than manufacturing a ranking that isn't really
+there.
+
+**What the data DOES support: month-of-year seasonality.** Monthly
+banking activity (collections + supplier payments combined, summed across
+the ~3-year ledger by calendar month) has real, sector-coherent structure.
+7 of 20 entities clear a 15% coefficient-of-variation threshold, and the
+pattern isn't random: **all 4 consumer/retail entities in the portfolio**
+(Shoprite Holdings, Bid Corporation, Pepkor Holdings, Clicks Group) **rank
+in the top 5, every one peaking in December** — the expected pre-Christmas
+retail volume surge. Valterra Platinum (mining, March peak) is the one
+exception to the retail-only pattern, reported as-is. The remaining 13
+entities (mostly mining, insurance, tech, telecoms) are close to flat
+year-round — for these, month-of-year is not treated as a meaningful
+engagement lever.
+
+Each seasonal entity gets a `suggested_engagement_month` = peak month − 2
+(a scheduling heuristic disclosed in-module, not a revenue-yield
+coefficient, so it lives in `src/cash_cycle.py`, not
+`config/assumptions.yaml`). **No revenue or NII figure is estimated by
+this module** — deliberately descriptive/behavioural only; monetising a
+"cash-cycle timing" insight would require inventing an unnamed
+"capturable balance %" coefficient with no basis in the data, exactly
+what this project's assumption-naming discipline exists to prevent (§1,
+CLAUDE.md). Phase 4's `deposit_nii` sub-component (already using the
+named `deposit_nii_margin_bps` assumption) is the correct place to look
+for that number.
+
+### 9.2 Latency & cost optimisation (`src/latency_optimization.py`)
+
+hackathon.txt's ask, verbatim: *"instrument the LLM pipeline, add caching,
+batching, and route simple classification to a small model reserving the
+large one for hard cases. Produce a before/after latency and cost
+chart."*
+
+Caching and prompt logging (`src.llm.generate_structured`) have been live
+since Phase 2 — every LLM call in this codebase already gets them. This
+module adds the piece that wasn't built yet: model routing, using
+`src/forensics.py`'s existing `regex_confidence` signal (0.85 = an
+explicit syndicate/bridging/bilateral keyword is present = "simple", 0.40
+otherwise = "hard") to decide which model handles which row. Not a new
+judgement call invented for this module — it's the same signal Phase 2
+already computes and cross-checks the LLM against.
+
+**A real bug, found by actually making a call, not by trusting the model
+list**: the originally-planned `MODEL_SMALL` (`gemini-2.5-flash-lite`)
+returned `404 NOT_FOUND — "no longer available to new users"` on the
+first live `generate_content` call, despite appearing in
+`client.models.list()`. Swapped to `gemini-3.1-flash-lite`, confirmed
+callable with a live test call before committing to it in code. Pricing
+for both models sourced fresh from
+[ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing)
+(retrieved 2026-08-11) rather than reusing PLAN.md's original
+gemini-2.5-flash-lite figures, which no longer apply to the model
+actually in use.
+
+**"Before" is Phase 2's real historical run, not a resimulation**: median
+latency and mean token counts come straight from
+`reports/llm_usage_log.jsonl`'s `forensics_memo_extraction` namespace,
+`cached=False` rows only. Median, not mean, deliberately — the log
+carries a small extreme-tail of retries from the bug already documented
+in CLAUDE.md "Must-know" #6, which would badly distort a mean-based
+baseline. **"After" is a genuine fresh 100-row sample** of `simple`-bucket
+rows re-run on `MODEL_SMALL`, extrapolated to the full 4,199-row workload
+using the real simple/hard split already present in
+`competitor_credit_events.parquet` (2,117 / 2,082, ~50/50).
+
+**Safety check, not just a cost claim**: every freshly-sampled row also
+has Phase 2's ORIGINAL `MODEL_DEFAULT` answer on file, so the
+`MODEL_SMALL`-vs-original agreement rate is measured, not assumed —
+**100% `facility_type` agreement** on this sample. High enough to trust
+the routing for the `simple` bucket: an explicit keyword match leaves
+little for a smaller model to get wrong.
+
+**Result, reported plainly even though it isn't a clean win on both
+axes**: **11% cost saved** ($1.24 → $1.10 for the full workload), but
+compute time is roughly flat (a ~1% swing, within noise). This specific
+model-generation pairing (gemini-3.1-flash-lite vs. gemini-2.5-flash) has
+a narrower price gap than the originally-planned gemini-2.5-flash-lite
+pairing, and a smaller model is not automatically a faster one — the
+report states this explicitly rather than showing only the metric that
+improved. Read this as a genuine **cost** optimisation, not a reliable
+**latency** one, for the model generation actually available at the time
+this was built.
+
+## 10. Limitations (running list — extended every phase)
 
 - **AI briefing notes inherit every upstream limitation already disclosed
   in Phases 2–6** — they are a faithful narration of the computed figures,
@@ -915,11 +1022,23 @@ practice since a full reload is the normal way this app gets opened.
   the reader has also seen the `caveats` field (or read this document);
   the dashboard surfaces `caveats` prominently for exactly this reason,
   but a printed/exported briefing note without that context would not.
-- **Phase 7 (bonus modules — cash-cycle timing, LLM latency/cost
-  optimisation) was not built this session**, in favour of Phase 8 — see
-  CLAUDE.md's session log for the explicit reasoning (Phase 8 is a
-  required deliverable per hackathon.txt, Phase 7 is explicitly optional).
-  Not an oversight; a scoping call, disclosed as one.
+- **Phase 7's cash-cycle module found no per-entity day-grain signal in
+  the data** (§9.1) — the brief's literal "days between outbound legs and
+  inbound collections" framing assumes a temporal offset that this
+  synthetic dataset's transaction timing doesn't encode at day or
+  day-of-week grain. The module answers the spirit of the ask (suggest
+  optimal engagement timing) at the grain the data actually supports
+  (month-of-year seasonality) instead — disclosed as a pivot, not silently
+  substituted.
+- **Phase 7's latency/cost module depends on a specific Gemini model being
+  callable at run time** (§9.2) — `gemini-2.5-flash-lite` was retired for
+  new API keys between when `MODEL_SMALL`'s default was first written and
+  when Phase 7 actually exercised it, a real example of how fast this
+  model landscape moves. `gemini-3.1-flash-lite` is confirmed working as
+  of 2026-08-11, but a future re-run of this module on a different API
+  key/date could hit the same class of failure — `src/llm.py`'s
+  `MODEL_SMALL` is overridable via `GEMINI_MODEL_SMALL` for exactly this
+  reason.
 - **The dashboard was verified by driving it manually (Playwright,
   screenshots, console-error checks), not by an automated UI test suite**
   — there is no `tests/test_dashboard.py`. A future regression in

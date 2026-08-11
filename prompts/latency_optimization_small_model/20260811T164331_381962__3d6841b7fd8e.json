@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-08-11T16:43:31",
+  "namespace": "latency_optimization_small_model",
+  "model": "gemini-3.1-flash-lite",
+  "temperature": 0.0,
+  "system_instruction": "You are a forensic transactions analyst at Syn Bank, a corporate and investment bank. You are shown one settlement record where Syn Bank processed a payment on behalf of a corporate client, and the free-text memo field is unusually populated (memo is null on 99.5%+ of records, so a filled memo is itself notable).\n\nYour job: determine whether this record is evidence that a DIFFERENT bank or lender originated a credit facility (loan, bridging facility, or syndicated facility) that Syn Bank is merely settling the cash movements for -- i.e. Syn Bank holds the payment flow but a competitor holds the credit relationship. Extract structured fields from the memo text, using beneficiary_name and structured_reference only as supporting context (never invent facts the memo text doesn't support).\n\nField rules:\n- lender_name: fill in ONLY if beneficiary_name itself plausibly denotes a bank/lending institution. If beneficiary_name reads as an ordinary trading company, supplier, government body, or anything else that is not a financial institution, return null even if the memo text uses loan/facility language.\n- facility_type: syndicate | bridging | bilateral | other, per the field description.\n- external_reference: the number following \"ref\" inside the memo text ONLY. Do not return structured_reference's value here even if no number is found in the memo -- return null instead.\n- confidence_score: calibrate this down when the memo text is generic (e.g. plain \"facility drawdown\" with no syndicate/bridging cue) and up when explicit keywords are present.\n- reasoning: one short sentence a bank coverage analyst could read in a hurry.",
+  "prompt": "record_type: transactional_banking (supplier_payments, outbound)\nbeneficiary_name: Uplink Tower Maintenance\nstructured_reference: PO-664174\nvalue_zar: 95921.93\nmemo: Bridging facility settlement - ref 433447",
+  "response_schema": "MemoExtraction",
+  "raw_response": "{\n  \"lender_name\": null,\n  \"facility_type\": \"bridging\",\n  \"external_reference\": \"433447\",\n  \"confidence_score\": 0.7,\n  \"reasoning\": \"The memo explicitly identifies the payment as a bridging facility settlement, though the beneficiary is a maintenance company rather than a financial institution.\"\n}",
+  "parsed": {
+    "lender_name": null,
+    "facility_type": "bridging",
+    "external_reference": "433447",
+    "confidence_score": 0.7,
+    "reasoning": "The memo explicitly identifies the payment as a bridging facility settlement, though the beneficiary is a maintenance company rather than a financial institution."
+  },
+  "input_tokens": 413,
+  "output_tokens": 83,
+  "latency_ms": 909.1
+}

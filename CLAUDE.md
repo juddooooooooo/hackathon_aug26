@@ -13,7 +13,7 @@ hackathons usually look like" — this repo has already made a lot of
 specific, non-obvious decisions (see below). Read PLAN.md + METHODOLOGY.md
 first or you will redo work or contradict an earlier decision.
 
-## Status: Phase 8 of 8 complete (Phase 7 skipped for now, see below)
+## Status: all 8 phases complete
 
 - [x] Phase 1 — Ingestion & profiling
 - [x] Phase 2 — Forensic extraction (Gen AI #1)
@@ -21,12 +21,12 @@ first or you will redo work or contradict an earlier decision.
 - [x] Phase 4 — Wallet model
 - [x] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation)
 - [x] Phase 6 — Opportunity ranking
-- [ ] Phase 7 — Bonus modules (cash-cycle timing, latency/cost optimisation) **← only phase left**
+- [x] Phase 7 — Bonus modules (cash-cycle timing, latency/cost optimisation)
 - [x] Phase 8 — Dashboard (+ AI briefing notes, Gen AI #3) — built ahead of Phase 7, see session log
 
-All of hackathon.txt's REQUIRED deliverables are now built. Phase 7 is
-explicitly "bonus" in the brief — worth doing if there's time, not a gap
-in the submission if there isn't.
+All of hackathon.txt's required deliverables AND the Phase 7 bonus modules
+are built. Remaining work is polish (dashboard/artifact cosmetics), not
+new phases — see the latest session log entry.
 
 Keep this checklist, `README.md`'s, and `PLAN.md`'s checkboxes in sync when
 a phase completes.
@@ -528,7 +528,7 @@ not by assuming the code was correct because it ran:**
 
 70/70 tests passing (3 new, `tests/test_briefing.py` — `test_uncertainty.py`-
 style pure-function tests; no `tests/test_dashboard.py`, the dashboard was
-verified by driving it, not by a unit-test suite, see METHODOLOGY.md §9
+verified by driving it, not by a unit-test suite, see METHODOLOGY.md §10
 limitations). `run_all.py`'s `briefing` step regenerates the dashboard's
 AI notes (the dashboard itself is `python -m streamlit run app/dashboard.py`,
 separate from the CLI chain — it's an interactive app, not a batch step).
@@ -599,10 +599,50 @@ exactly the kind of non-obvious groupby/merge logic the project's testing
 convention calls out). **Next agent:** if you touch `app/dashboard.py`
 again, remember the dark-mode lesson above — reach for `st.context.theme`
 before reaching for custom CSS.
-Docs updated: METHODOLOGY.md (§8, both sub-sections + limitations),
-CLAUDE.md (must-know #9 + this entry), PLAN.md, README.md.
 
-**All of hackathon.txt's REQUIRED deliverables are now built.** Only
-Phase 7 (explicitly "bonus" in the brief) remains open — see PLAN.md for
-its spec (cash-cycle timing, LLM latency/cost optimisation) if there's
-time to build it. If not, this is a complete, submittable pipeline as-is.
+### 2026-08-11 — Claude (Sonnet 5), Phase 7 bonus modules (same day, continued session)
+
+Built both Phase 7 bonus modules, closing out all 8 phases.
+
+**`src/cash_cycle.py` (7a)**: the brief's literal ask ("model days between
+outbound supplier legs and inbound collections") was checked against the
+data FIRST, not assumed — volume-weighted day-of-month for `collections`
+vs `supplier_payments` converges to the same day (~15-16) for every one of
+the 20 entities (7-8% CV, near-uniform; day-of-week is <1% CV). Disclosed
+as a dead signal rather than ranking noise — same discipline as the FX
+currency-pair dead signal (METHODOLOGY.md §6.3). Checked month-of-year
+next: real, sector-coherent seasonality exists there (all 4 consumer/
+retail entities top the ranking, all peaking in December). Built the
+module around that instead. No revenue figure estimated — descriptive
+only, per the assumption-naming discipline.
+
+**`src/latency_optimization.py` (7b)**: routes Phase 2's existing
+`regex_confidence` signal (already computed, not reinvented) to
+`MODEL_SMALL`/`MODEL_DEFAULT`. **Real bug hit immediately**: the
+originally-planned `MODEL_SMALL` (`gemini-2.5-flash-lite`) 404'd — "no
+longer available to new users" — on the very first live call. Listed by
+`client.models.list()` but not actually callable for this API key/project;
+caught by actually making a call, not by checking the model was listed.
+Swapped to `gemini-3.1-flash-lite` (tested live before committing to it),
+updated `src/llm.py`'s default with a dated comment. Sourced fresh pricing
+for both models from ai.google.dev/gemini-api/docs/pricing (2026-08-11)
+rather than reusing the stale 2.5-flash-lite figures from PLAN.md's
+original spec. 'Before' baseline is Phase 2's REAL historical
+`reports/llm_usage_log.jsonl` data (median, not mean — the log has a small
+retry-storm tail from the bug fixed in "Must-know" #6, which would badly
+skew a mean). 'After' is a genuine fresh 100-row sample. Safety check
+(agreement rate between the cheap model and Phase 2's original answer on
+the same rows): 100%. Result reported plainly even though it's not a
+clean win: 11% cost saved, but compute time is roughly flat — this
+model-generation pairing is a real cost optimisation, not a latency one,
+and the report says so explicitly rather than hiding the weaker metric.
+
+`run_all.py` extended with both phases (`cash_cycle`, `latency_opt` —
+the latter skipped automatically under `--no-llm`). 78/78 tests passing
+(8 new: `tests/test_cash_cycle.py`, `tests/test_latency_optimization.py`).
+Docs updated: METHODOLOGY.md, PLAN.md, README.md, this file.
+
+**All of hackathon.txt's required deliverables AND the Phase 7 bonus
+modules are now built.** Next agent: remaining work is dashboard/artifact
+cosmetic polish (user-requested: a separate, more polished static Artifact
+showcase alongside the existing Streamlit app) — not new phases.

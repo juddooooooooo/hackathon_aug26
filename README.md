@@ -66,6 +66,8 @@ src/
   uncertainty.py                Phase 5 -- Monte Carlo, sensitivity, triangulation
   opportunity.py               Phase 6 -- expected-value opportunity ranking
   briefing.py                  Phase 8 support -- AI client briefing notes [Gen AI #3]
+  cash_cycle.py                Phase 7 bonus (a) -- cash-cycle/seasonality timing
+  latency_optimization.py      Phase 7 bonus (b) -- model-routing before/after latency & cost
 app/dashboard.py                Phase 8 -- Streamlit dashboard (run: python -m streamlit run app/dashboard.py)
 data/external/raw/             Phase 3's fetched source text (committed, evidence for extraction)
 data/processed/                derived tables (parquet) + the DuckDB database
@@ -91,7 +93,7 @@ happened so far. **[PLAN.md](PLAN.md)** is the full phase-by-phase backlog
 - [x] Phase 4 — Wallet model
 - [x] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation)
 - [x] Phase 6 — Opportunity ranking
-- [ ] Phase 7 — Bonus: cash-cycle timing, latency/cost optimisation ← **only phase left, optional**
+- [x] Phase 7 — Bonus: cash-cycle timing, latency/cost optimisation
 - [x] Phase 8 — Dashboard + AI briefing notes (Gen AI #3) — built ahead of Phase 7, see CLAUDE.md session log
 
-All of hackathon.txt's required deliverables are built. Phase 7 is explicitly "bonus" in the brief.
+All of hackathon.txt's required deliverables are built, plus the Phase 7 bonus modules.
