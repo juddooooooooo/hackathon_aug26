@@ -906,6 +906,38 @@ Python-rendered charts pick up the new theme on the next full page
 reload. Not fixed (no clean fix without client-side JS); harmless in
 practice since a full reload is the normal way this app gets opened.
 
+### 8.4 UX pass + a real base-case/median conflation caught by fact-checking the dashboard
+
+A full click-through of every page (light + dark, screenshotted) surfaced
+several small, real bugs — a metric label truncating, two horizontal bar
+charts clipping their outside-positioned value label near the axis max,
+`entity_name`/`pillar` raw column names leaking into the heatmap as axis
+labels, and the tornado chart being a light-only static PNG (fixed by
+rebuilding it as a live theme-aware Plotly chart with a human-readable
+`ASSUMPTION_LABEL` mapping instead of raw `config/assumptions.yaml` dotted
+paths). All fixed in `app/dashboard.py`.
+
+**One of these was more than cosmetic.** The Portfolio Summary page's
+headline "blended share of wallet" metric was `mc['portfolio_share'].median()`
+— the Monte Carlo median (4.6%) — under a label that had previously read
+"base case." `reports/uncertainty_report.md` (§6.1) already reports these
+as two distinct, both-legitimate numbers: **Base-case point estimate:
+5.3%** (every assumption at its yaml midpoint) vs. **Monte Carlo median:
+4.6%** (2,000 draws across each assumption's low-high range) — they
+differ because `captured/tam` is a nonlinear ratio, so a distribution's
+median under perturbation need not equal the function evaluated at the
+midpoint inputs (visible in the Monte Carlo histogram's right skew). The
+report text got this right; the dashboard's headline metric silently
+dropped the point estimate and showed only the median under an
+ambiguous label. Fixed by computing the base-case point estimate the same
+way Phase 4 does (`src.wallet.blended_tam_and_captured` on
+`wallet_model.parquet`, not new logic) and showing both figures,
+explicitly labelled, with a caption explaining why they differ. Caught
+only by tracing a specific number back to its source and finding it
+didn't match the documentation that was supposedly already fixed — not
+by the dashboard failing to load or a test failing, since no test covers
+dashboard label wiring (§10 limitations already names this gap).
+
 ## 9. Phase 7 — Bonus modules (`src/cash_cycle.py`, `src/latency_optimization.py`)
 
 Built after Phases 1–6 and 8, per the re-sequencing explained in §8's

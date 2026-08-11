@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.common import EXPECTED_ENTITIES, KNOWN_COMPETITOR_BENEFICIARIES  # noqa: E402
+from src.wallet import blended_tam_and_captured  # noqa: E402
 
 PROCESSED = ROOT / "data" / "processed"
 DUCKDB_PATH = PROCESSED / "syn_bank.duckdb"
@@ -211,17 +212,32 @@ def page_portfolio_summary():
     ent = data["entity_ranking"]
     main = ent[~ent.is_global_major].sort_values("total_expected_value_zar", ascending=False)
     mc = data["monte_carlo"]
+    # The base-case POINT ESTIMATE (all assumptions at their yaml midpoint) and the
+    # Monte Carlo MEDIAN (2,000 draws across each assumption's low-high range) are
+    # two different quantities that need not coincide -- captured/tam is a nonlinear
+    # ratio, so perturbing every input does not average back to the point estimate.
+    # reports/uncertainty_report.md already keeps them distinct (5.3% point estimate
+    # vs. 4.6% median); this page previously showed only the median under a "base
+    # case" label, silently dropping the point estimate. Recomputed the same way
+    # Phase 4 does (src.wallet.blended_tam_and_captured on wallet_model.parquet),
+    # not a new calculation.
+    base_case_tam, base_case_captured = blended_tam_and_captured(data["wallet_model"])
+    base_case_share = base_case_captured / base_case_tam if base_case_tam else None
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric(
-            "Blended share of wallet", f"{mc['portfolio_share'].median():.1%}" if len(mc) else "n/a",
-            help="Syn Bank's captured revenue as a % of the total addressable banking wallet, portfolio-wide. "
-                 "This is the Monte Carlo median (2,000 iterations) — see the 5th–95th percentile below, never "
-                 "report the point estimate alone.",
+            "Blended share of wallet", f"{base_case_share:.1%}" if base_case_share is not None else "n/a",
+            help="Base-case point estimate: every assumption in config/assumptions.yaml at its midpoint value. "
+                 "This is NOT the same as the Monte Carlo median shown below it — a nonlinear ratio's median "
+                 "under perturbation need not equal its value at the midpoint inputs. Both are reported, "
+                 "deliberately, rather than picking one.",
         )
         if len(mc):
-            st.caption(f"5th–95th pct: {mc['portfolio_share'].quantile(0.05):.1%} – {mc['portfolio_share'].quantile(0.95):.1%}")
+            st.caption(
+                f"Monte Carlo median: {mc['portfolio_share'].median():.1%} · "
+                f"5th–95th pct: {mc['portfolio_share'].quantile(0.05):.1%} – {mc['portfolio_share'].quantile(0.95):.1%}"
+            )
     with col2:
         st.metric(
             "Expected-value opportunity", r_fmt(main["total_expected_value_zar"].sum()),
