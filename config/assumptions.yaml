@@ -220,3 +220,38 @@ revealed_presence:
     low: 35
     high: 55
     rationale: "assumed approximate SOW% for an entity using the full observed product range (top of observed breadth) -- a broad relationship still rarely means 100% share for a client that deliberately multi-banks (hackathon.txt: 'not the sole banking partner for any client')"
+
+# --------------------------------------------------------------------------
+# Phase 6 — opportunity ranking (src/opportunity.py)
+# --------------------------------------------------------------------------
+# hackathon.txt's Phase 6 formula: expected_value = wallet_gap x
+# win_probability x margin. wallet_gap and captured revenue (Phase 4) are
+# already expressed in bank-revenue rands (fees + margin already priced
+# in via config/assumptions.yaml's yield assumptions) -- "margin" here is
+# NOT a second application of the same yield (that would double-count it).
+# It represents net_margin_realization below: the share of that GROSS
+# revenue gap that converts to bottom-line CONTRIBUTION after cost-to-serve
+# and risk-adjusted capital charges, which Phase 4's yields do not net out.
+opportunity_ranking:
+  net_margin_realization:
+    value: 0.65
+    low: 0.55
+    high: 0.75
+    rationale: "share of gross wallet-gap revenue (Phase 4's fee/margin yields, already net of cost-of-funds) that converts to bottom-line contribution after cost-to-serve and risk-adjusted capital charges; 55-75% plausible range for a corporate/investment bank, 65% midpoint"
+
+  # win_probability is a weighted blend of 4 right-to-win signals named
+  # explicitly in hackathon.txt's Phase 6 spec. Weights sum to 1.0.
+  win_probability_weights:
+    breadth: {value: 0.30, rationale: "existing product breadth (Phase 5's leg_type/channel/instrument coverage, country coverage handled separately below to avoid double-counting) -- a client already using more of Syn Bank's product range is an easier cross-sell"}
+    relationship_strength: {value: 0.30, rationale: "Transactional Banking captured share of wallet -- the foundational relationship product sequencing is built on; hackathon.txt: 'you win FX off the back of payment flow, not the reverse'"}
+    momentum: {value: 0.20, rationale: "Phase 5's Bonferroni-significant time-trend signal -- a growing relationship is easier to grow further, a shrinking one is a harder sell regardless of gap size"}
+    country_adjacency: {value: 0.20, rationale: "existing country-corridor coverage (Phase 5 revealed-presence, out of 34 observed countries) -- an already-entrenched international relationship is more winnable for further geographic expansion than a cold start; hackathon.txt notes country coverage (10-22 of 34) is the meaningful corridor signal, currency-pair coverage is not"}
+
+  # Product-sequencing enforcement -- hackathon.txt: "Flag any
+  # recommendation that violates this."
+  sequencing_risk_threshold:
+    value: 0.10
+    rationale: "Transactional Banking share-of-wallet below this level means the foundational payment-flow relationship is too weak to safely justify leading with a Global Markets or Investment Banking recommendation -- flagged, not silently ranked as if the relationship were solid"
+  sequencing_penalty_multiplier:
+    value: 0.5
+    rationale: "win_probability multiplier applied to Global Markets/Investment Banking opportunities that fail the sequencing-readiness check -- halves, does not zero out, since a sequencing-risk opportunity is a real deprioritisation, not an impossibility"

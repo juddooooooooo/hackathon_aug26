@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T13:49:58",
+  "generated_at": "2026-08-11T15:06:00",
   "entity_master": [
     {
       "entity_id": "E01",
@@ -189,8 +189,8 @@
         "n": 2802875,
         "min": 205.35,
         "max": 64832717.95764583,
-        "sum": 405442910068.7131,
-        "mean": 144652.51217721557
+        "sum": 405442910068.7129,
+        "mean": 144652.5121772155
       },
       "n_distinct_entities": 20,
       "categoricals": {
@@ -666,11 +666,11 @@
     },
     "transactional_banking": {
       "n_memo_rows": 3657.0,
-      "sum_memo_zar": 597220360.63,
+      "sum_memo_zar": 597220360.6299999,
       "n_bank_beneficiary": 1544.0,
       "sum_bank_beneficiary_zar": 452369428.13,
       "n_non_bank_beneficiary": 2113.0,
-      "sum_non_bank_beneficiary_zar": 144850932.5
+      "sum_non_bank_beneficiary_zar": 144850932.50000003
     }
   }
 }

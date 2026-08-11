@@ -1,6 +1,6 @@
 # Phase 1 — Ingestion & Profiling Report
 
-Generated: 2026-08-11T13:49:58
+Generated: 2026-08-11T15:06:00
 
 > **Every rand figure below is GROSS FLOW / EXPOSURE observed in the ledgers -- not bank revenue and not share of wallet.** Converting flow into revenue requires an explicit yield assumption (bps, fee-per-payment, NII margin, ...); that conversion happens in Phase 4 (`src/wallet.py`) using named, sourced assumptions in `config/assumptions.yaml`. See hackathon.txt's domain rule and METHODOLOGY.md.
 ## Entity master (20 expected clients — validated)
@@ -356,4 +356,4 @@ Rows where `memo` is non-null, split by whether `beneficiary_name` is one of the
 | trade_finance         |            94 |    1.63095e+08 |                    0 |                0           |
 | transactional_banking |          3657 |    5.9722e+08  |                 1544 |                4.52369e+08 |
 
-**NEW — not in the original brief:** transactional_banking.csv also carries a `memo` column. 3,657 non-null rows (R597,220,361) split into 1,544 rows to the same 5 known counterparties (R452,369,428) and 2,113 rows to ordinary trade counterparties carrying identical template language (R144,850,932). See Phase 2 output for interpretation.
+**NEW — not in the original brief:** transactional_banking.csv also carries a `memo` column. 3,657 non-null rows (R597,220,361) split into 1,544 rows to the same 5 known counterparties (R452,369,428) and 2,113 rows to ordinary trade counterparties carrying identical template language (R144,850,933). See Phase 2 output for interpretation.

@@ -139,7 +139,7 @@ definitional discrepancy on Anglo American's cost of sales rather than
 silently picking a number (§4.2). `foreign_revenue_pct` coverage is
 honestly low (30%, 6/20) — not backfilled. Debt maturity profile and
 undrawn facilities were **not** built as separate fields this phase — see
-METHODOLOGY.md §7 limitations; `total_debt`'s current/non-current split is
+METHODOLOGY.md §8 limitations; `total_debt`'s current/non-current split is
 available in the raw source files if Phase 4 needs a coarser proxy.
 
 ## Phase 4 — Wallet model ✅ DONE
@@ -242,7 +242,7 @@ but **5/20 entities show a trend robust to Bonferroni correction** (BHP,
 Anglo American, OUTsurance, Sanlam, NEPI Rockcastle) — both facts true at
 once, neither hidden. Full derivation: METHODOLOGY.md §6.
 
-## Phase 6 — Opportunity ranking ⬜
+## Phase 6 — Opportunity ranking ✅ DONE
 
 Rank by EXPECTED VALUE, not gap size:
 
@@ -261,6 +261,38 @@ not the reverse. Flag any recommendation that violates this.
 > profiling — see `reports/profiling_report.md`). Country coverage ranges
 > 10–22 of 34 and IS meaningful — compare against each client's published
 > geographic segments (Phase 3 output).
+
+**Built as:** `src/opportunity.py`; `config/assumptions.yaml` extended
+with an `opportunity_ranking` section (`net_margin_realization`,
+`win_probability_weights`, sequencing threshold/penalty — all named +
+rationale'd, same file every phase uses). Output:
+`data/processed/opportunity_ranking_entity.parquet` (headline, one row
+per entity, ranked), `opportunity_ranking_pillar.parquet` (detail),
+`reports/opportunity_report.md`. `wallet_gap` only counts sub-components
+where captured is directly observable (the same row-alignment discipline
+as Phase 4/5); the 3 structurally-unobservable-captured sub-components
+contribute to a separate `unknown_capture_potential_zar` diagnostic,
+never blended into the ranked figure. `win_probability` reuses Phase 5's
+signals directly (revealed-presence breadth, Transactional Banking share
+as relationship strength, the Bonferroni-trend signal as momentum,
+country coverage as adjacency) rather than re-deriving them.
+
+**Result: top SA-domestic opportunity is Shoprite Holdings** (R193.8m
+expected value, R555.5m wallet gap, Transactional Banking). Dual-listed
+global majors ranked in a separate section per Phase 4/5's explicit
+handoff instruction (Glencore alone would otherwise show a R3.13bn
+"opportunity" purely from its inflated global-revenue TAM denominator).
+**Product-sequencing flag fires on 30/40 Global Markets/Investment
+Banking rows** — a real portfolio-level finding (Syn Bank's
+Transactional Banking capture is thin almost everywhere, per Phase 4's
+4.9% blended TB share), not an over-triggered threshold. Pepkor ranks
+lower (8th) than its raw size might suggest because its Phase 4 TAM
+assumption breach floors its `deposit_nii` gap at 0 — the honest
+propagation of a finding disclosed two phases ago, not a new issue.
+`breadth_score` shows the same low-discriminating-power pattern already
+found in Phase 5 (this portfolio's clients are all already broad
+product users) — disclosed, not hidden. Full derivation: METHODOLOGY.md
+§7.
 
 ## Phase 7 — Bonus modules ⬜ (only after 1–6 are working)
 

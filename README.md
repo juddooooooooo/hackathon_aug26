@@ -61,7 +61,7 @@ src/
   financials.py                Phase 3 -- external financial baseline [Gen AI]
   wallet.py                    Phase 4 -- total wallet + Syn Bank's captured share
   uncertainty.py                Phase 5 -- Monte Carlo, sensitivity, triangulation
-  opportunity.py               Phase 6 -- expected-value opportunity ranking          (not yet built)
+  opportunity.py               Phase 6 -- expected-value opportunity ranking
 app/                           Phase 8 -- Streamlit dashboard                         (not yet built)
 data/external/raw/             Phase 3's fetched source text (committed, evidence for extraction)
 data/processed/                derived tables (parquet) + the DuckDB database
@@ -86,6 +86,6 @@ happened so far. **[PLAN.md](PLAN.md)** is the full phase-by-phase backlog
 - [x] Phase 3 — External financial baseline (Gen AI #2)
 - [x] Phase 4 — Wallet model
 - [x] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation)
-- [ ] Phase 6 — Opportunity ranking ← **next**
+- [x] Phase 6 — Opportunity ranking
 - [ ] Phase 7 — Bonus: cash-cycle timing, latency/cost optimisation
-- [ ] Phase 8 — Dashboard
+- [ ] Phase 8 — Dashboard ← **next** (see CLAUDE.md session log for the Phase 7-vs-8 ordering note)

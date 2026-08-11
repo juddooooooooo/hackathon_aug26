@@ -626,7 +626,159 @@ AND "a handful of specific clients are moving" — not one fact overriding
 the other. These 5 are genuine per-client signals worth a coverage
 banker's attention independent of the portfolio-level story.
 
-## 7. Limitations (running list — extended every phase)
+## 7. Phase 6 — Opportunity ranking (`src/opportunity.py`)
+
+hackathon.txt's formula: `expected_value = wallet_gap × win_probability ×
+margin`. Ranks all 20 entities — the deliverable the brief's dashboard
+section explicitly asks for ("portfolio-level summary ranking all 20
+clients by expected value").
+
+### 7.1 wallet_gap — confidence-aware, not a blind subtraction
+
+`wallet_gap = max(tam_zar − captured_zar, 0)`, computed ONLY for
+sub-components where both sides are observable on the same row (the same
+`blended_tam_and_captured` discipline as Phase 4/5 — METHODOLOGY.md §5.3).
+For the 3 structurally-unobservable-captured sub-components
+(`rate_hedging`, `debt_arrangement`, `competitor_credit_gap`), the full
+TAM is reported as `unknown_capture_potential_zar` — a separate,
+clearly-labelled upper bound, never blended into the ranked
+`expected_value`. Folding an unmeasurable capture into a confident-looking
+ranked number would be exactly the kind of false precision this project
+has avoided at every prior phase.
+
+### 7.2 win_probability — the 4 right-to-win signals, as named in the brief
+
+A weighted blend (weights in `config/assumptions.yaml`, sum to 1.0,
+named + rationale'd like every other assumption):
+
+- **breadth (30%)** — Phase 5's `revealed_presence.parquet`
+  leg-type/channel/instrument coverage (country handled separately,
+  below, to avoid double-counting the same underlying signal).
+- **relationship_strength (30%)** — Transactional Banking's captured
+  share of wallet, computed the same row-aligned way as everywhere else
+  in this pipeline. This is the foundational-relationship signal product
+  sequencing (§7.3) is built on.
+- **momentum (20%)** — Phase 5's Bonferroni-significant time-trend signal
+  (`time_trends_entity.parquet`): 0.8 if growing, 0.2 if shrinking, 0.5
+  (neutral, not penalised) if no trend survives multiple-testing
+  correction.
+- **country_adjacency (20%)** — Phase 5's country-corridor coverage (of
+  34 observed). hackathon.txt is explicit that currency-pair coverage is
+  a dead signal (all 20 entities use all 5 pairs) but country coverage
+  (10–22 of 34) is meaningful — this is that signal, reused rather than
+  re-derived.
+
+Clipped to [0.05, 0.95] — a right-to-win estimate this coarse should
+never claim certainty in either direction.
+
+**Disclosed limitation, found immediately on inspection**: `breadth_score`
+clusters near 1.0 for nearly every entity (`reports/opportunity_report.md`
+"Right-to-win signal detail") — the same low-discriminating-power issue
+already found for Phase 5's revealed-presence estimator (§6.3), for the
+same underlying reason (this portfolio's clients are all already broad
+users). In practice, `relationship_strength` and `country_adjacency`
+drive nearly all the variation in `win_probability`; `breadth`'s 30%
+weight is real but contributes little differentiation on THIS specific
+20-entity portfolio. Not corrected — the weight is honestly disclosed as
+specified, not silently reduced to make the output look more
+discriminating than the underlying signal actually is.
+
+### 7.3 margin, and why it isn't a second yield application
+
+`margin = net_margin_realization` (`config/assumptions.yaml`, 65% base
+case, 55–75% range) — the share of GROSS wallet-gap revenue that converts
+to bottom-line contribution after cost-to-serve and risk-adjusted capital
+charges. This is deliberately NOT a second pass of Phase 4's yield
+assumptions: `wallet_gap` is already denominated in bank revenue (fees +
+spread already priced in via `config/assumptions.yaml`'s bps/fee
+assumptions) — applying a yield a second time here would double-count
+margin already inside the number.
+
+### 7.4 Product-sequencing enforcement
+
+hackathon.txt: *"you win FX off the back of payment flow, not the
+reverse... Flag any recommendation that violates this."* Any Global
+Markets or Investment Banking opportunity for an entity whose
+`relationship_strength_score` is below `sequencing_risk_threshold` (10%)
+is flagged (`sequencing_flag`) and has `win_probability` halved
+(`sequencing_penalty_multiplier`), not zeroed — a real deprioritisation,
+not an impossibility claim. Transactional Banking itself is never
+sequencing-flagged (it is the foundational pillar, not a cross-sell on
+top of one).
+
+**Result: 30 of 40 Global Markets/Investment Banking rows are flagged**
+(`reports/opportunity_report.md`). This is a real, portfolio-level
+finding, not an over-triggered threshold — it directly reflects Phase 4's
+headline result that Syn Bank's Transactional Banking capture is thin
+almost everywhere in this portfolio (blended TB share 4.9%, §5.4). Read as
+"most cross-sell opportunities in this portfolio need the payment-flow
+relationship deepened first," not thirty isolated edge cases.
+
+### 7.5 Global majors ranked separately, dual-listed entities excluded from the primary list
+
+Per the explicit instruction carried forward from Phases 4–5 (§5.2, §6.3):
+`GLOBAL_MAJOR_ENTITIES`' TAM is inflated by using entire-global (not
+SA-specific) revenue. Mixing them into the primary ranked list would let
+their artificially large gaps dominate — Glencore alone shows a
+**R3.13bn** expected value, an order of magnitude above every SA-domestic
+entity, purely a function of the denominator problem already disclosed,
+not a real, actionable coverage opportunity of that scale. Reported in a
+clearly-separated section for completeness, never presented as a top
+recommendation.
+
+### 7.6 Results
+
+**Top SA-domestic opportunity: Shoprite Holdings** (R193.8m expected
+value, R555.5m wallet gap, Transactional Banking). Top 5: Shoprite, Bid
+Corporation, MTN Group, Vodacom Group, Sanlam. `top_pillar` is
+Transactional Banking for all 20 entities — expected, not a modelling
+artefact: TB's TAM scales off (revenue + cost_of_sales), a much larger
+base than Global Markets/Investment Banking's narrower slices (§5.1), and
+a broad relationship's single largest addressable pillar being
+Transactional Banking is well-established corporate-banking practice, not
+a surprise this pipeline manufactured.
+
+**Pepkor's ranking (8th) is lower than its raw wallet size might suggest,
+and that's the TAM-assumption breach propagating correctly, not a new
+error**: its `deposit_nii` wallet_gap floors at 0 (captured already
+exceeds the too-conservative TAM assumption — §5.2), shrinking its total
+gap. This is the honest, connected consequence of a finding disclosed
+three phases ago, not something to "fix" here — Pepkor's TRUE opportunity
+is plausibly larger than this ranking shows, exactly because the
+underlying TAM assumption undercounts a demonstrably high-cash-flow
+retailer, and Phase 5's independent revealed-presence estimator already
+corroborated this (§6.3).
+
+## 8. Limitations (running list — extended every phase)
+
+- **Phase 6's `win_probability` is a 4-signal weighted heuristic, not a
+  calibrated probability** — there is no historical win/loss outcome data
+  anywhere in the provided files to calibrate against (this is a common
+  constraint for a brand-new coverage-prioritisation tool, not specific to
+  this dataset). Treat the resulting ranking as a reasoned, disclosed
+  prioritisation aid, not a statistically validated probability.
+- **`breadth_score` has low discriminating power on this specific
+  portfolio** (§7.2) — real, disclosed, not corrected by re-weighting
+  after the fact to produce a more differentiated-looking result.
+- **Entity-level `win_probability` in the primary ranking table is
+  pre-sequencing-adjustment** (§7.2) — it equals the post-adjustment
+  figure for Transactional Banking (never itself sequencing-flagged, and
+  always the `top_pillar` in this run) but NOT for an entity's Global
+  Markets/Investment Banking rows, which carry their own adjusted figure
+  in the pillar-level detail table. Reading the entity-level column as
+  "the" win probability for every pillar would be a mistake.
+- **No entity-level Monte Carlo credible interval** — Phase 5's Monte
+  Carlo runs at portfolio and pillar grain only (`monte_carlo_results.parquet`);
+  Phase 6's ranking uses Phase 4's point-estimate `wallet_model.parquet`
+  directly. An entity's true rank could plausibly shift within Phase 5's
+  wider portfolio-level uncertainty band — a natural extension if this
+  pipeline is developed further, not built this phase, a deliberate scope
+  boundary rather than an oversight.
+- **`net_margin_realization` is a single portfolio-wide assumption**, not
+  differentiated by pillar — a corporate-lending-heavy Investment Banking
+  opportunity plausibly carries a different risk-adjusted capital charge
+  than a Transactional Banking one. Simplified to one figure for this
+  phase; disclosed as a simplification, not hidden.
 
 - **Every fee/margin/bps assumption in `config/assumptions.yaml` is an
   informed market-practice estimate, not a published rate card** (see §5

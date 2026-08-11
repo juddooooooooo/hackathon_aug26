@@ -5,7 +5,7 @@ Read this file first. Then:
 - **`PLAN.md`** — the full phase-by-phase backlog (authoritative scope, what's
   done, what's next, verbatim spec for unbuilt phases).
 - **`METHODOLOGY.md`** — rationale, data findings, and limitations for what
-  IS built. Every assumption behind Phase 1–5 lives here.
+  IS built. Every assumption behind Phase 1–6 lives here.
 - **`hackathon.txt`** — the official brief, for context on what's being judged.
 
 Do not start writing phase code from memory of what "share of wallet
@@ -13,16 +13,16 @@ hackathons usually look like" — this repo has already made a lot of
 specific, non-obvious decisions (see below). Read PLAN.md + METHODOLOGY.md
 first or you will redo work or contradict an earlier decision.
 
-## Status: Phase 5 of 8 complete
+## Status: Phase 6 of 8 complete
 
 - [x] Phase 1 — Ingestion & profiling
 - [x] Phase 2 — Forensic extraction (Gen AI #1)
 - [x] Phase 3 — External financial baseline (Gen AI #2)
 - [x] Phase 4 — Wallet model
 - [x] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation)
-- [ ] Phase 6 — Opportunity ranking **← start here**
+- [x] Phase 6 — Opportunity ranking
 - [ ] Phase 7 — Bonus modules (cash-cycle timing, latency/cost optimisation)
-- [ ] Phase 8 — Dashboard
+- [ ] Phase 8 — Dashboard **← next (see latest session log entry for the Phase 7-vs-8 ordering call)**
 
 Keep this checklist, `README.md`'s, and `PLAN.md`'s checkboxes in sync when
 a phase completes.
@@ -118,7 +118,20 @@ a phase completes.
      §6.5) are both genuine, targeted signals worth folding into
      win_probability or timing — don't let Phase 6 rediscover these from
      scratch when they're already computed.
-8. **Real bugs already found & fixed — don't reintroduce them.** All have
+8. **Phase 6 opportunity-ranking facts Phase 7/8 need**:
+   `data/processed/opportunity_ranking_entity.parquet` is the headline,
+   ranked, one-row-per-entity output the Phase 8 dashboard's "portfolio-
+   level summary" should read directly, not re-derive. Its `is_global_major`
+   column is how the SA-domestic/global-major split (item #7 above) is
+   already applied — filter on it rather than re-importing
+   `GLOBAL_MAJOR_ENTITIES` and redoing the split. `total_expected_value_zar`
+   is the ranking metric, not `total_wallet_gap_zar` — the whole point of
+   Phase 6 was ranking by expected value, not raw gap size; don't let a
+   later phase quietly regress to sorting by gap. Its `top_pillar` column
+   is Transactional Banking for all 20 entities by design (§7.6) — a
+   dashboard drill-down should still show all 3 pillars per entity
+   (`opportunity_ranking_pillar.parquet`), not just the top one.
+9. **Real bugs already found & fixed — don't reintroduce them.** All have
    regression tests (`tests/test_forensics.py`, `tests/test_llm.py`,
    `tests/test_financials.py`):
    - `a == b` on a pandas Series containing `None`/`NaN` is **not** the
@@ -205,16 +218,16 @@ a phase completes.
 ```bash
 pip install -r requirements.txt
 cp .env.example .env      # fill in your OWN GEMINI_API_KEY
-python run_all.py                     # Phases 1-5 (everything built so far, ~3-4 min -- Phase 5's
+python run_all.py                     # Phases 1-6 (everything built so far, ~3-4 min -- Phase 5's
                                        #   Monte Carlo defaults to 2000 iterations; --mc-iterations 200
                                        #   for a faster/rougher run)
-python -m pytest tests/ -q            # 57 tests, all should pass, no API key needed
+python -m pytest tests/ -q            # 67 tests, all should pass, no API key needed
 ```
 
 Raw CSVs go in `data/` as `transactional_banking.csv`,
 `cross_border_payments.csv`, `trade_finance.csv` (gitignored — 392MB+33MB+3MB
 exceeds GitHub's 100MB single-file limit; get them from the team). Everything
-needed to inspect Phase 1–5 output *without* rerunning anything is already
+needed to inspect Phase 1–6 output *without* rerunning anything is already
 committed: `reports/`, `prompts/`, `data/processed/*.parquet`,
 `data/external/raw/` (Phase 3's fetched source text).
 
@@ -223,7 +236,13 @@ committed: `reports/`, `prompts/`, `data/processed/*.parquet`,
 Append a dated entry here at the end of every session — a few lines: what
 you built/changed, key decisions made, what you'd tell the next agent to do
 first. **Do not delete earlier entries** — this is the handoff mechanism
-between sessions/agents on this project.
+between sessions/agents on this project. **When citing a METHODOLOGY.md
+section, cite it by heading text, not a hardcoded `§N` number** — every
+phase added so far has renumbered everything after it, and old entries'
+`§N` references go stale the moment the next phase lands. A few earlier
+entries below still have hardcoded numbers with an inline "renumbered
+since" correction; don't add more of those, just avoid the number
+entirely going forward.
 
 ### 2026-08-08 — Claude (Sonnet 5), initial build
 
@@ -276,8 +295,9 @@ Final: ground-truth accuracy 19/19 (100.0%) after the fix, 31/31 tests
 passing, `python run_all.py` runs Phases 1-3 end to end in ~25s (fully
 cached). `foreign_revenue_pct` coverage is honestly low (30%, 6/20) and
 `debt_maturity_profile`/`undrawn_facilities` were scoped out of the schema
-entirely (see METHODOLOGY.md §7 limitations — renumbered after Phase 4
-landed; was §5 at the time this entry was written) — both worth
+entirely (see METHODOLOGY.md's Limitations section — its number keeps
+shifting as phases are added, search by heading text, not a hardcoded §
+number, in any session-log entry including this one) — both worth
 reconsidering if Phase 4's Investment Banking pillar ends up needing them
 more than expected. (Verdict, Phase 4 session below: it didn't —
 `total_debt` alone was sufficient for the debt-arrangement TAM.)
@@ -339,10 +359,10 @@ interesting slide in the deck," don't bury it; (4) sector regression of
 wallet-intensity; (5) time-trend test (the brief already tells you
 aggregate volume is flat 2023-07 to 2026-06 — check whether that holds
 per-entity too, and say so either way, don't manufacture a trend that
-isn't there). Read METHODOLOGY.md §5 and §7 (limitations — renumbered
-after Phase 5 landed; was §6 at the time this entry was written) in full
-before starting — several Phase 4 outputs (the TAM breach, the
-global-majors cohort, the 3 structurally-unobservable sub-components) are
+isn't there). Read METHODOLOGY.md's Phase 4 section and its Limitations
+section in full before starting (section numbers keep shifting as phases
+are added — search by heading text) — several Phase 4 outputs (the TAM
+breach, the global-majors cohort, the 3 structurally-unobservable sub-components) are
 exactly the kind of thing a credible interval and a tornado chart should
 visibly reflect, not paper over.
 
@@ -400,4 +420,56 @@ files/columns/entity flags to build against (`GLOBAL_MAJOR_ENTITIES`,
 below-sector-line and Bonferroni-trending entity lists). Respect product
 sequencing (FX follows payment flow, not the reverse — flag any
 recommendation that violates this, per PLAN.md's Phase 6 spec). Read
-METHODOLOGY.md §6 (Phase 5) and §7 (limitations) before starting.
+METHODOLOGY.md's Phase 5 section and its Limitations section before
+starting (section numbers keep shifting as phases are added — search by
+heading text, not a hardcoded § number, in this or any older session-log
+entry).
+
+### 2026-08-11 — Claude (Sonnet 5), Phase 6 (same day, continued session)
+
+Built Phase 6 (`src/opportunity.py`) end to end: ranks all 20 entities by
+`expected_value = wallet_gap × win_probability × margin` per hackathon.txt's
+formula, reusing Phase 4/5 outputs directly rather than re-deriving
+signals (`win_probability` = weighted blend of Phase 5's revealed-presence
+breadth, Transactional Banking relationship strength, the Bonferroni-trend
+momentum signal, and country-corridor adjacency — all 4 signals the brief
+names explicitly). `wallet_gap` keeps the same row-alignment discipline as
+Phase 4/5 — only counted where captured is directly observable, the 3
+structurally-unobservable sub-components report a separate
+`unknown_capture_potential_zar` diagnostic instead of a false-precision
+blend. `margin` is a NEW `net_margin_realization` assumption (65% base
+case), not a second application of Phase 4's yields — wallet_gap is
+already revenue, applying a bps yield again would double-count margin.
+
+Product-sequencing enforcement (hackathon.txt: "flag any recommendation
+that violates this") found a real, portfolio-level result, not noise:
+**30/40 Global Markets/Investment Banking rows are sequencing-flagged**,
+directly reflecting Phase 4's already-known thin Transactional Banking
+capture (4.9% blended share) — win_probability is halved for these, not
+zeroed, and the report says explicitly this is a portfolio finding, not
+30 isolated edge cases. Global majors ranked in a fully separate section
+per the Phase 4/5 handoff instruction (Glencore alone would otherwise show
+a R3.13bn "opportunity" that's purely a global-revenue-denominator
+artefact). `breadth_score` shows the same near-1.0, low-discriminating-
+power pattern already found in Phase 5 for this portfolio — disclosed
+again here rather than silently reduced to look more useful. Top
+SA-domestic opportunity: **Shoprite Holdings**, R193.8m expected value.
+
+67/67 tests passing (10 new). `run_all.py` chains Phase 6. Docs updated:
+METHODOLOGY.md (§7, all of 7.1-7.6 + limitations), CLAUDE.md (must-know
+#8 for what Phase 7/8 should read directly, not rebuild), PLAN.md,
+README.md.
+
+**Next agent: Phase 7 (bonus modules) or Phase 8 (dashboard) per
+`PLAN.md`.** Recommendation, not a decision made unilaterally — check with
+whoever's steering the submission before picking: hackathon.txt's
+Deliverables list makes the dashboard a REQUIRED submission component
+(portfolio summary, per-client drill-down, opportunity heatmap, AI
+briefing notes for 3+ clients, the competitor-credit finding as a
+dedicated view) with real weight in the 10% Presentation & Storytelling
+criterion, while Phase 7 is explicitly labelled "bonus" in both
+hackathon.txt and PLAN.md — Phase 8 is very likely the higher-priority
+next step for a submission that has to ship, not just score well on
+technical merit. If you build Phase 8, `data/processed/opportunity_ranking_entity.parquet`
+is the direct source for the portfolio-summary view (see "Must-know" #8)
+— don't recompute it inside the dashboard.

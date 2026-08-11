@@ -18,7 +18,7 @@ Phases (see METHODOLOGY.md for what each one does and why):
     3. financials -- src/financials.py (external financial baseline)       [Gen AI #2]
     4. wallet     -- src/wallet.py     (total wallet + Syn Bank share)
     5. uncertainty-- src/uncertainty.py(Monte Carlo, sensitivity, triangulation)
-    6. opportunity-- src/opportunity.py(expected-value ranking)                          -- not yet built
+    6. opportunity-- src/opportunity.py(expected-value ranking)
     7. bonus      -- cash-cycle timing + latency/cost optimisation                       -- not yet built
     8. dashboard  -- app/ (Streamlit)                                                    -- not yet built
 """
@@ -33,7 +33,7 @@ from src.common import configure_logging
 
 logger = logging.getLogger("run_all")
 
-PHASES = ["ingest", "forensics", "financials", "wallet", "uncertainty"]  # extended as later phases are built
+PHASES = ["ingest", "forensics", "financials", "wallet", "uncertainty", "opportunity"]  # extended as later phases are built
 
 
 def main() -> None:
@@ -99,6 +99,14 @@ def main() -> None:
 
         sys.argv = ["uncertainty", "--mc-iterations", str(args.mc_iterations)]
         uncertainty_main()
+
+    if "opportunity" in run_until:
+        logger.info("=" * 70)
+        logger.info("PHASE 6 -- Opportunity Ranking")
+        logger.info("=" * 70)
+        from src.opportunity import main as opportunity_main
+
+        opportunity_main()
 
     elapsed = time.perf_counter() - t_start
     logger.info("=" * 70)
