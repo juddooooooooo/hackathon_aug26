@@ -44,7 +44,7 @@ python run_all.py --no-llm            # skip all LLM calls
 python run_all.py --sample 200        # Phase 2: sample instead of the full ~4,199 memo rows
 python run_all.py --mc-iterations 200 # Phase 5: faster/rougher Monte Carlo (default 2000, ~3min)
 
-streamlit run app/dashboard.py        # Phase 8 dashboard -- interactive, run separately
+python -m streamlit run app/dashboard.py        # Phase 8 dashboard -- interactive, run separately
 ```
 
 Every phase is also independently runnable, e.g. `python -m src.ingest` or
@@ -66,7 +66,7 @@ src/
   uncertainty.py                Phase 5 -- Monte Carlo, sensitivity, triangulation
   opportunity.py               Phase 6 -- expected-value opportunity ranking
   briefing.py                  Phase 8 support -- AI client briefing notes [Gen AI #3]
-app/dashboard.py                Phase 8 -- Streamlit dashboard (run: streamlit run app/dashboard.py)
+app/dashboard.py                Phase 8 -- Streamlit dashboard (run: python -m streamlit run app/dashboard.py)
 data/external/raw/             Phase 3's fetched source text (committed, evidence for extraction)
 data/processed/                derived tables (parquet) + the DuckDB database
 reports/                       profiling/forensics/financials/... reports, LLM usage ledger, external_sources.md

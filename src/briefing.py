@@ -42,8 +42,11 @@ NAMESPACE = "client_briefing_notes"
 
 class ClientBriefing(BaseModel):
     headline: str = Field(
-        description="One-sentence headline naming the single biggest opportunity in rand terms and its pillar, "
-        "e.g. 'R193.8m expected-value opportunity, anchored in Transactional Banking'. Use the exact figures given."
+        description="One-sentence headline naming the single biggest opportunity in rand terms and the SPECIFIC "
+        "product driving it (top_sub_component_label, e.g. 'Payment fees (transaction volume & pricing)'), not "
+        "just the pillar -- 'anchored in Transactional Banking' alone is too generic to act on. E.g. 'R193.8m "
+        "expected-value opportunity, driven by payment fee pricing within Transactional Banking'. Use the exact "
+        "figures given."
     )
     summary: str = Field(
         description="3-5 sentence briefing note for a coverage banker preparing for a client call. Ground every "
@@ -51,8 +54,9 @@ class ClientBriefing(BaseModel):
         "language a non-technical senior banker can act on, not a data dump."
     )
     recommended_next_step: str = Field(
-        description="One concrete, specific next action for the coverage team -- respect product sequencing "
-        "(don't recommend leading with FX/Investment Banking if a sequencing risk was flagged)."
+        description="One concrete, specific next action for the coverage team, naming the specific product "
+        "(top_sub_component_label) to lead with, not just the pillar -- respect product sequencing (don't "
+        "recommend leading with FX/Investment Banking if a sequencing risk was flagged)."
     )
     caveats: Optional[str] = Field(
         default=None,
@@ -89,6 +93,11 @@ def _build_prompt(entity_id: str, ctx: dict) -> str:
         f"total_expected_value_zar: {ctx['total_expected_value_zar']:.0f}",
         f"total_wallet_gap_zar: {ctx['total_wallet_gap_zar']:.0f}",
         f"top_pillar: {ctx['top_pillar']}",
+        f"top_sub_component_label: {ctx['top_sub_component_label']} (the SPECIFIC product driving the top_pillar "
+        f"opportunity -- use this, not just top_pillar, in the headline and next step. Different sub-components "
+        f"are different conversations: e.g. payment-fee pricing is a transactional-pricing conversation, "
+        f"deposit/cash-management is a treasury-balances conversation)",
+        f"top_sub_component_expected_value_zar: {ctx['top_sub_component_expected_value_zar']:.0f}",
         f"win_probability: {ctx['win_probability']:.2f}",
         f"any_sequencing_flag: {ctx['any_sequencing_flag']} (if true: a Global Markets/Investment Banking "
         f"opportunity here rests on a weak Transactional Banking relationship -- recommend deepening payment "
@@ -138,6 +147,8 @@ def build_entity_context(
             "total_wallet_gap_zar": float(row["total_wallet_gap_zar"]),
             "total_unknown_capture_tam_zar": float(row["total_unknown_capture_tam_zar"]),
             "top_pillar": row["top_pillar"],
+            "top_sub_component_label": row.get("top_sub_component_label") or "n/a",
+            "top_sub_component_expected_value_zar": float(row["top_sub_component_expected_value_zar"]) if pd.notna(row.get("top_sub_component_expected_value_zar")) else 0.0,
             "win_probability": float(row["win_probability"]),
             "relationship_strength_score": float(row["relationship_strength_score"]),
             "any_sequencing_flag": bool(row["any_sequencing_flag"]),

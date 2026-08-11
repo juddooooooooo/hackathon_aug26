@@ -238,7 +238,7 @@ python run_all.py                     # Phases 1-6 + the Phase 8 briefing-notes 
                                        #   built so far EXCEPT Phase 7, which is still open),
                                        #   ~3-4 min -- Phase 5's Monte Carlo defaults to 2000
                                        #   iterations; --mc-iterations 200 for a faster/rougher run
-streamlit run app/dashboard.py        # Phase 8 dashboard -- separate from run_all.py, interactive
+python -m streamlit run app/dashboard.py        # Phase 8 dashboard -- separate from run_all.py, interactive
 python -m pytest tests/ -q            # 70 tests, all should pass, no API key needed
 ```
 
@@ -530,8 +530,75 @@ not by assuming the code was correct because it ran:**
 style pure-function tests; no `tests/test_dashboard.py`, the dashboard was
 verified by driving it, not by a unit-test suite, see METHODOLOGY.md §9
 limitations). `run_all.py`'s `briefing` step regenerates the dashboard's
-AI notes (the dashboard itself is `streamlit run app/dashboard.py`,
+AI notes (the dashboard itself is `python -m streamlit run app/dashboard.py`,
 separate from the CLI chain — it's an interactive app, not a batch step).
+
+### 2026-08-11 — Claude (Sonnet 5), sub-component specificity + dark mode (same day, continued session)
+
+Two pieces of user feedback on the finished Phase 8 dashboard/briefing
+notes, both fixed:
+
+**1. "Everything says Transactional Banking — what specifically are we
+missing?"** Root cause: `wallet_model.parquet` already carries
+sub-component granularity (`payment_fees`, `deposit_nii`, `fx_hedging`,
+`rate_hedging`, `debt_arrangement`, `trade_finance_instruments`,
+`competitor_credit_gap`) but `src/opportunity.py`'s `build_pillar_ranking`
+aggregated it away with `groupby(["entity_id", "pillar"])` before it ever
+reached the ranking or the briefing prompt — a real information loss, not
+a wording problem. Fixed by adding `build_subcomponent_ranking()`
+(computes `expected_value_zar` at the finest grain, same win-probability/
+sequencing-penalty logic as the pillar-level version) and threading
+`top_sub_component_label` through `build_entity_ranking`, `render_markdown`,
+and `src/briefing.py`'s schema/prompt (headline + recommended_next_step
+must now name the specific product, not just the pillar). New output:
+`data/processed/opportunity_ranking_subcomponent.parquet`,
+`SUB_COMPONENT_LABEL` dict in `src/opportunity.py`. **Finding, not a
+default**: 19/20 entities' single biggest opportunity is genuinely
+`payment_fees` ("Payment fees (transaction volume & pricing)") — it's the
+largest sub-component TAM base, not a generation artefact. The one
+exception is OUTsurance (E07) → `deposit_nii`, because insurers carry no
+`cost_of_sales`, which shrinks their `payment_fees` TAM base to below
+`deposit_nii`. All 20 briefing notes regenerated with the new prompt.
+Dashboard: Portfolio Summary's ranking table now shows "Specific product"
+(`top_sub_component_label`) instead of the pillar; Client Drill-Down got a
+new sub-component-level bar chart (colored by parent pillar).
+
+**2. "Streamlit charts don't look good in dark mode."** First attempt was
+wrong and is worth recording so it isn't retried: added a sidebar
+"Appearance" radio + custom `st.markdown(<style>...)` CSS injection to
+force-repaint Streamlit's own chrome. Verified via Playwright screenshot —
+the Plotly charts picked up the right colors, but the injected CSS fought
+Streamlit's own stylesheet on broad selectors (`h1,h2,h3,.stCaption`) and
+left page text nearly unreadable (dim-gray-on-black). **Correct fix**:
+Streamlit 1.52 (installed version) exposes `st.context.theme.type`
+(`"light"`/`"dark"`), which reflects the theme the user already controls
+via Streamlit's own native menu (top-right "⋮" → Settings → "Choose app
+theme" — defaults to OS/browser preference). Removed the custom
+toggle/CSS entirely; every chart now reads `THEME_NAME =
+st.context.theme.type or "light"` and looks up a `THEMES["light"|"dark"]`
+dict (both variants filled in from the `dataviz` skill's validated
+palette — light AND dark categorical hues, sequential ramp, status
+colors, chart-surface/ink/grid tokens — not just the light half that was
+hardcoded before) via a `chart_layout()` helper every chart now calls
+instead of hardcoding `plot_bgcolor="#fcfcfb"`. **Caveat found while
+verifying**: `st.context.theme.type` does not update mid-session on an
+in-place rerun triggered by the settings dialog — it only reflects the
+new theme after a full page reload/reconnect. Not fixed (no clean
+workaround without React-side JS), but harmless in practice — the
+dashboard is refreshed on load anyway, and Streamlit's own chrome updates
+instantly regardless, so the visual lag is confined to the charts on one
+transitional interaction. Added a sidebar caption pointing users at the
+native menu location, since it's not obvious. Verified both themes via
+Playwright: light mode unchanged, dark mode chrome (sidebar/background/
+text) correctly dark from Streamlit's own theme, charts correctly dark
+after reload.
+
+70/70 tests still passing (no new tests added for
+`build_subcomponent_ranking` this round — flagged as a follow-up, it's
+exactly the kind of non-obvious groupby/merge logic the project's testing
+convention calls out). **Next agent:** if you touch `app/dashboard.py`
+again, remember the dark-mode lesson above — reach for `st.context.theme`
+before reaching for custom CSS.
 Docs updated: METHODOLOGY.md (§8, both sub-sections + limitations),
 CLAUDE.md (must-know #9 + this entry), PLAN.md, README.md.
 

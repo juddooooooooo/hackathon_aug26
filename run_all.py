@@ -21,7 +21,7 @@ Phases (see METHODOLOGY.md for what each one does and why):
     6. opportunity-- src/opportunity.py(expected-value ranking)
     7. briefing   -- src/briefing.py  (AI client briefing notes)          [Gen AI #3, Phase 8 support]
        bonus      -- cash-cycle timing + latency/cost optimisation                       -- not yet built
-    8. dashboard  -- app/dashboard.py (Streamlit -- run separately: `streamlit run app/dashboard.py`,
+    8. dashboard  -- app/dashboard.py (Streamlit -- run separately: `python -m streamlit run app/dashboard.py`,
                      not part of this CLI chain; reads briefing's output + everything above)
 """
 from __future__ import annotations

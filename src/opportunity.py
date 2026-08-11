@@ -71,9 +71,27 @@ logger = logging.getLogger(__name__)
 
 OUT_ENTITY = PROCESSED_DIR / "opportunity_ranking_entity.parquet"
 OUT_PILLAR = PROCESSED_DIR / "opportunity_ranking_pillar.parquet"
+OUT_SUBCOMPONENT = PROCESSED_DIR / "opportunity_ranking_subcomponent.parquet"
 OUT_REPORT_MD = REPORTS_DIR / "opportunity_report.md"
 
 CROSS_SELL_PILLARS = ("Global Markets", "Investment Banking")
+
+# Human-readable labels for each wallet_model.parquet sub_component --
+# "Transactional Banking" alone is too blunt a recommendation for a banker
+# to act on (payment-fee pricing and deposit/cash-management are different
+# conversations, different Syn Bank teams, different pitches). Every
+# ranking output below carries the specific sub-component, not just the
+# pillar, precisely so "what should I actually talk to this client about"
+# has a real answer -- see METHODOLOGY.md Phase 6 section.
+SUB_COMPONENT_LABEL = {
+    "payment_fees": "Payment fees (transaction volume & pricing)",
+    "deposit_nii": "Deposit / cash management (NII on operating balances)",
+    "fx_hedging": "FX hedging",
+    "rate_hedging": "Interest-rate hedging (IRS on floating-rate debt)",
+    "debt_arrangement": "Debt arrangement fees",
+    "trade_finance_instruments": "Trade finance instruments (LCs / guarantees / collections)",
+    "competitor_credit_gap": "Competitor-held credit exposure (diagnostic)",
+}
 
 
 # --------------------------------------------------------------------------
@@ -163,10 +181,51 @@ def build_pillar_ranking(gap_df: pd.DataFrame, signals_df: pd.DataFrame, assumpt
     return df.sort_values("expected_value_zar", ascending=False).reset_index(drop=True)
 
 
-def build_entity_ranking(pillar_df: pd.DataFrame) -> pd.DataFrame:
+def build_subcomponent_ranking(gap_df: pd.DataFrame, signals_df: pd.DataFrame, assumptions: dict) -> pd.DataFrame:
+    """Same expected_value formula as build_pillar_ranking, one level more
+    granular -- (entity, pillar, sub_component) instead of (entity, pillar).
+    This is what actually answers "what should a banker pitch": Transactional
+    Banking alone doesn't distinguish payment-fee pricing from deposit/cash-
+    management, which are different products and different conversations.
+    Only rows with a confident wallet_gap are included (the 3 structurally-
+    unobservable-captured sub-components have no wallet_gap_zar to rank by,
+    consistent with the pillar-level ranking's treatment of them).
+    """
+    opp = assumptions["opportunity_ranking"]
+    margin = _v(opp["net_margin_realization"])
+    seq_threshold = _v(opp["sequencing_risk_threshold"])
+    seq_penalty = _v(opp["sequencing_penalty_multiplier"])
+
+    # gap_df and signals_df both carry entity_name/sector -- drop gap_df's copy
+    # before merging so pandas doesn't suffix them into entity_name_x/_y.
+    sub = gap_df[gap_df["gap_confident"]].drop(columns=["entity_name", "sector"]).copy()
+    sub = sub.merge(signals_df, on="entity_id", how="left")
+    sub["sub_component_label"] = sub["sub_component"].map(SUB_COMPONENT_LABEL).fillna(sub["sub_component"])
+
+    sub["sequencing_flag"] = (sub["pillar"].isin(CROSS_SELL_PILLARS)) & (sub["relationship_strength_score"] < seq_threshold)
+    sub["win_probability_adjusted"] = np.where(sub["sequencing_flag"], sub["win_probability"] * seq_penalty, sub["win_probability"])
+    sub["expected_value_zar"] = sub["wallet_gap_zar"] * sub["win_probability_adjusted"] * margin
+
+    cols = ["entity_id", "entity_name", "sector", "pillar", "sub_component", "sub_component_label", "wallet_gap_zar", "win_probability_adjusted", "expected_value_zar", "sequencing_flag"]
+    return sub[cols].sort_values(["entity_id", "expected_value_zar"], ascending=[True, False]).reset_index(drop=True)
+
+
+def build_entity_ranking(pillar_df: pd.DataFrame, subcomponent_df: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for entity_id, g in pillar_df.groupby("entity_id"):
         top = g.sort_values("expected_value_zar", ascending=False).iloc[0]
+        sub_g = subcomponent_df[subcomponent_df.entity_id == entity_id]
+        # top_sub_component: the SPECIFIC product driving the opportunity, not
+        # just the pillar -- "Transactional Banking" alone doesn't tell a
+        # banker whether to pitch payment-fee pricing or cash management.
+        if len(sub_g):
+            top_sub = sub_g.sort_values("expected_value_zar", ascending=False).iloc[0]
+            top_sub_component = top_sub["sub_component"]
+            top_sub_component_label = top_sub["sub_component_label"]
+            top_sub_component_expected_value_zar = top_sub["expected_value_zar"]
+        else:
+            top_sub_component = top_sub_component_label = None
+            top_sub_component_expected_value_zar = None
         rows.append(
             {
                 "entity_id": entity_id,
@@ -178,6 +237,9 @@ def build_entity_ranking(pillar_df: pd.DataFrame) -> pd.DataFrame:
                 "total_expected_value_zar": g["expected_value_zar"].sum(),
                 "top_pillar": top["pillar"],
                 "top_pillar_expected_value_zar": top["expected_value_zar"],
+                "top_sub_component": top_sub_component,
+                "top_sub_component_label": top_sub_component_label,
+                "top_sub_component_expected_value_zar": top_sub_component_expected_value_zar,
                 "any_sequencing_flag": bool(g["sequencing_flag"].any()),
                 "win_probability": g["win_probability"].iloc[0],
                 "relationship_strength_score": g["relationship_strength_score"].iloc[0],
@@ -194,7 +256,7 @@ def build_entity_ranking(pillar_df: pd.DataFrame) -> pd.DataFrame:
 # --------------------------------------------------------------------------
 # Reporting
 # --------------------------------------------------------------------------
-def render_markdown(entity_df: pd.DataFrame, pillar_df: pd.DataFrame) -> str:
+def render_markdown(entity_df: pd.DataFrame, pillar_df: pd.DataFrame, subcomponent_df: pd.DataFrame) -> str:
     lines = ["# Phase 6 — Opportunity Ranking Report", ""]
     lines.append(
         "`expected_value = wallet_gap x win_probability x margin` (hackathon.txt's own formula). "
@@ -213,17 +275,26 @@ def render_markdown(entity_df: pd.DataFrame, pillar_df: pd.DataFrame) -> str:
         "larger base than the narrower FX-turnover or debt-specific slices Global Markets/Investment "
         "Banking draw on (METHODOLOGY.md §5.1) — a broad relationship's largest single addressable pillar "
         "being Transactional Banking is a well-established pattern in corporate banking, not a modelling "
-        "quirk. **`win_probability` in this table is the entity-level base score, BEFORE the "
+        "quirk. **`top_sub_component` is the specific, actionable answer** — \"Transactional Banking\" "
+        "alone doesn't tell a coverage banker whether to pitch payment-fee pricing or cash/deposit "
+        "management, which are different products and different conversations; see "
+        "`SUB_COMPONENT_LABEL` in `src/opportunity.py` and 'Full sub-component detail' below. "
+        "**`win_probability` in this table is the entity-level base score, BEFORE the "
         "sequencing penalty** applied to specific Global Markets/Investment Banking rows below (see "
         "'Full pillar-level detail') — shown unadjusted here because it never differs from the "
         "post-adjustment figure for an entity's *top* pillar (Transactional Banking is never itself "
-        "sequencing-flagged).\n"
+        "sequencing-flagged). **`top_sub_component` is `payment_fees` for 19/20 entities** (the "
+        "exception, OUTsurance Group, is `deposit_nii` -- an insurer's `payment_fees` TAM throughput "
+        "uses `total_revenue` alone with no `cost_of_sales` add-on, since insurers don't have one, "
+        "consistently shrinking that base -- see METHODOLOGY.md's limitations). Genuinely useful "
+        "specificity nonetheless: it tells a banker WHICH conversation to have (payment-fee pricing, not "
+        "cash management, for the large majority of this portfolio), even though the label itself repeats.\n"
     )
     main = entity_df[~entity_df.is_global_major].copy()
     main["total_expected_value_R_m"] = (main["total_expected_value_zar"] / 1e6).round(2)
     main["total_wallet_gap_R_m"] = (main["total_wallet_gap_zar"] / 1e6).round(1)
     main["win_probability"] = (main["win_probability"] * 100).round(0).astype(int).astype(str) + "%"
-    disp_cols = ["rank", "entity_id", "entity_name", "sector", "total_expected_value_R_m", "total_wallet_gap_R_m", "win_probability", "top_pillar", "any_sequencing_flag"]
+    disp_cols = ["rank", "entity_id", "entity_name", "sector", "total_expected_value_R_m", "total_wallet_gap_R_m", "win_probability", "top_pillar", "top_sub_component_label", "any_sequencing_flag"]
     lines.append(main[disp_cols].to_markdown(index=False))
 
     lines.append(
@@ -277,6 +348,19 @@ def render_markdown(entity_df: pd.DataFrame, pillar_df: pd.DataFrame) -> str:
         sig[c] = sig[c].round(2)
     lines.append(sig.sort_values("entity_id").to_markdown(index=False))
 
+    lines.append(
+        "\n## Full sub-component detail — the specific product behind every pillar figure\n\n"
+        "This is the table that actually answers \"what should I pitch this client\": every ranked "
+        "opportunity broken down to the individual product (payment fees vs. deposit/cash management "
+        "within Transactional Banking; FX vs. rate hedging within Global Markets; trade finance "
+        "instruments vs. debt arrangement within Investment Banking), each with its own expected value.\n"
+    )
+    sub_disp = subcomponent_df[["entity_id", "entity_name", "pillar", "sub_component_label", "wallet_gap_zar", "win_probability_adjusted", "expected_value_zar", "sequencing_flag"]].copy()
+    for c in ["wallet_gap_zar", "expected_value_zar"]:
+        sub_disp[c] = sub_disp[c].map(lambda x: f"{x:,.0f}" if pd.notna(x) else "")
+    sub_disp["win_probability_adjusted"] = sub_disp["win_probability_adjusted"].round(2)
+    lines.append(sub_disp.to_markdown(index=False))
+
     lines.append("\n## Full pillar-level detail\n")
     pd_disp = pillar_df[["entity_id", "entity_name", "pillar", "wallet_gap_zar", "unknown_capture_tam_zar", "win_probability_adjusted", "expected_value_zar", "sequencing_flag"]].copy()
     for c in ["wallet_gap_zar", "unknown_capture_tam_zar", "expected_value_zar"]:
@@ -303,13 +387,18 @@ def main() -> None:
     signals_df = compute_entity_signals(wallet_df, presence_df, trend_df)
     signals_df = compute_win_probability(signals_df, assumptions)
     pillar_df = build_pillar_ranking(gap_df, signals_df, assumptions)
-    entity_df = build_entity_ranking(pillar_df)
+    subcomponent_df = build_subcomponent_ranking(gap_df, signals_df, assumptions)
+    entity_df = build_entity_ranking(pillar_df, subcomponent_df)
 
     pillar_df.to_parquet(OUT_PILLAR, index=False)
+    subcomponent_df.to_parquet(OUT_SUBCOMPONENT, index=False)
     entity_df.to_parquet(OUT_ENTITY, index=False)
-    logger.info("Wrote %s (%d rows), %s (%d rows)", OUT_PILLAR, len(pillar_df), OUT_ENTITY, len(entity_df))
+    logger.info(
+        "Wrote %s (%d rows), %s (%d rows), %s (%d rows)",
+        OUT_PILLAR, len(pillar_df), OUT_SUBCOMPONENT, len(subcomponent_df), OUT_ENTITY, len(entity_df),
+    )
 
-    report = render_markdown(entity_df, pillar_df)
+    report = render_markdown(entity_df, pillar_df, subcomponent_df)
     OUT_REPORT_MD.write_text(report, encoding="utf-8")
     logger.info("Wrote %s", OUT_REPORT_MD)
 

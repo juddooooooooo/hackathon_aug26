@@ -749,6 +749,44 @@ underlying TAM assumption undercounts a demonstrably high-cash-flow
 retailer, and Phase 5's independent revealed-presence estimator already
 corroborated this (§6.3).
 
+### 7.7 Sub-component ranking — "Transactional Banking" is a pillar, not a product
+
+User feedback on the first version of this ranking (and the briefing
+notes it feeds, §8.1): every entity's `top_pillar` was Transactional
+Banking, and the briefing notes said so without ever naming which
+Transactional Banking product. That's a real information loss, not a
+wording problem — `wallet_model.parquet` already computes
+`wallet_gap`/`captured`/`tam` at sub-component grain (`payment_fees`,
+`deposit_nii`, `fx_hedging`, `rate_hedging`, `debt_arrangement`,
+`trade_finance_instruments`, `competitor_credit_gap`); `build_pillar_ranking`
+aggregated it away with a `groupby(["entity_id", "pillar"])` before it
+ever reached the ranked output.
+
+Fixed with `build_subcomponent_ranking()` — the same `wallet_gap ×
+win_probability_adjusted × margin` formula as §7.1–7.3, but computed at
+sub-component grain and exposed as
+`data/processed/opportunity_ranking_subcomponent.parquet` and a
+"Full sub-component detail" section in `reports/opportunity_report.md`.
+Each entity's top sub-component (`top_sub_component_label`) is now
+carried into `build_entity_ranking`'s output and required — by field
+description, not just convention — in `src/briefing.py`'s headline and
+recommended-next-step generation (§8.1).
+
+**Result, and it's a genuine finding**: 19 of 20 entities' single
+largest opportunity is specifically `payment_fees` ("Payment fees
+(transaction volume & pricing)") — not a generation default, but a
+consequence of §7.6's TAM-scaling explanation taken one level deeper:
+`payment_fees`'s TAM base (transaction volume × pricing intensity) is
+larger than any other Transactional Banking sub-component's for
+essentially every corporate in this portfolio. The one exception,
+**OUTsurance (E07) → `deposit_nii`**, is explained by the same mechanism
+running in reverse: insurers carry no `cost_of_sales` line, which is part
+of `payment_fees`'s TAM formula (§5.1) — removing that term shrinks
+OUTsurance's `payment_fees` TAM below its `deposit_nii` TAM, so
+cash-management/NII becomes its largest lever instead. This is exactly
+the kind of portfolio-level differentiation the pillar-only ranking was
+hiding.
+
 ## 8. Phase 8 — Dashboard (`app/dashboard.py`) and AI briefing notes (`src/briefing.py`) [Gen AI #3]
 
 Built ahead of Phase 7 (bonus modules) — hackathon.txt's Deliverables list
@@ -803,8 +841,9 @@ requirement, see below):
   throughout, never mixed into the primary ranking.
 - **Client Drill-Down** — per-entity KPIs, wallet gap by pillar (fixed
   pillar order and colour across every entity, so a banker can compare
-  entities without re-reading the axis), the 4 right-to-win signals, and
-  a financial snapshot.
+  entities without re-reading the axis), a wallet-gap-by-sub-component
+  chart (§7.7 — the specific-product grain, colour-linked to its parent
+  pillar), the 4 right-to-win signals, and a financial snapshot.
 - **Opportunity Heatmap** — client × pillar, sequential single-hue
   colourscale (magnitude encoding, per the dataviz method), SA-domestic
   entities only.
@@ -842,6 +881,30 @@ would have missed — the pillar chart's category order wasn't pinned
 briefing-notes page's default selection led with global majors (inflated
 figures) instead of the realistic SA-domestic opportunities every other
 page treats as primary.
+
+### 8.3 Dark mode — theme-aware charts, not a forced repaint
+
+Every chart originally hardcoded a light-surface `plot_bgcolor`/
+`paper_bgcolor` (`#fcfcfb`), so switching Streamlit's own theme to dark
+(top-right "⋮" → Settings → "Choose app theme") left the embedded Plotly
+charts light-surfaced against a dark page — the user-reported bug. First
+attempt (a custom sidebar toggle + injected CSS forcing Streamlit's own
+elements dark) was wrong and reverted: verified via Playwright screenshot,
+the injected CSS fought Streamlit's own stylesheet on broad selectors and
+left page text almost unreadable. Correct fix: Streamlit 1.52 exposes
+`st.context.theme.type` (`"light"`/`"dark"`), the theme the user already
+controls via that native menu — no custom toggle needed. Every chart now
+looks up a `THEMES["light"|"dark"]` dict (both variants populated from the
+`dataviz` skill's validated palette, categorical/sequential/status/ink/grid
+tokens for both surfaces, not just the light half used before) through a
+shared `chart_layout()` helper.
+
+**Known limitation**: `st.context.theme.type` does not update mid-session
+on the in-place rerun the Settings dialog triggers — only Streamlit's own
+chrome (which is React-side, not a script rerun) updates instantly; the
+Python-rendered charts pick up the new theme on the next full page
+reload. Not fixed (no clean fix without client-side JS); harmless in
+practice since a full reload is the normal way this app gets opened.
 
 ## 9. Limitations (running list — extended every phase)
 

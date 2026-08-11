@@ -26,6 +26,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
@@ -36,32 +37,93 @@ DUCKDB_PATH = PROCESSED / "syn_bank.duckdb"
 
 # --------------------------------------------------------------------------
 # Palette — validated categorical/sequential/status colors (dataviz skill
-# reference palette, light-surface values; this is a locally-run app, not
-# a shared dark-mode-aware artifact, so one validated light palette is used
-# throughout rather than a per-chart theme switch).
+# reference palette). Light AND dark variants are both defined here; the
+# user picks which one applies via a sidebar toggle (`THEME` below), and
+# every chart in this file reads its colors from the active theme dict
+# rather than a hardcoded hex — this is what makes charts follow Streamlit's
+# dark mode instead of staying light-surface regardless of app theme.
 # --------------------------------------------------------------------------
-CATEGORICAL = {
-    "blue": "#2a78d6",
-    "orange": "#eb6834",
-    "aqua": "#1baf7a",
-    "yellow": "#eda100",
-    "magenta": "#e87ba4",
-    "green": "#008300",
-    "violet": "#4a3aa7",
-    "red": "#e34948",
+THEMES = {
+    "light": {
+        "categorical": {
+            "blue": "#2a78d6", "orange": "#eb6834", "aqua": "#1baf7a", "yellow": "#eda100",
+            "magenta": "#e87ba4", "green": "#008300", "violet": "#4a3aa7", "red": "#e34948",
+        },
+        "status": {"good": "#0ca30c", "warning": "#fab219", "serious": "#ec835a", "critical": "#d03b3b"},
+        "sequential": ["#eaf2fc", "#cde2fb", "#9ec5f4", "#5598e7", "#256abf", "#0d366b"],
+        "surface": "#fcfcfb",
+        "page": "#f9f9f7",
+        "ink_primary": "#0b0b0b",
+        "ink_secondary": "#52514e",
+        "ink_muted": "#898781",
+        "grid": "#e1e0d9",
+        "baseline": "#c3c2b7",
+    },
+    "dark": {
+        "categorical": {
+            "blue": "#3987e5", "orange": "#d95926", "aqua": "#199e70", "yellow": "#c98500",
+            "magenta": "#d55181", "green": "#008300", "violet": "#9085e9", "red": "#e66767",
+        },
+        "status": {"good": "#0ca30c", "warning": "#fab219", "serious": "#ec835a", "critical": "#d03b3b"},
+        "sequential": ["#256abf", "#3987e5", "#5598e7", "#9ec5f4", "#cde2fb", "#eaf2fc"],
+        "surface": "#1a1a19",
+        "page": "#0d0d0d",
+        "ink_primary": "#ffffff",
+        "ink_secondary": "#c3c2b7",
+        "ink_muted": "#898781",
+        "grid": "#2c2c2a",
+        "baseline": "#383835",
+    },
 }
+
+st.set_page_config(page_title="Syn Bank — Share of Wallet Intelligence Engine", layout="wide", page_icon="🏦")
+
+# Every Plotly chart in this file reads its colors from the ACTIVE Streamlit
+# theme via st.context.theme.type ("light"/"dark") -- this is the theme the
+# user already controls natively (top-right "⋮" menu -> Settings -> app
+# theme, or their OS preference on first load). Streamlit's own chrome
+# (sidebar, metrics, captions) already re-themes itself correctly when that's
+# toggled; only the embedded Plotly charts were staying light-hardcoded
+# regardless, which is the bug being fixed here. No custom CSS injection --
+# fighting Streamlit's own stylesheet with broad selectors is fragile and,
+# tried once here, made native text nearly unreadable in dark mode.
+try:
+    THEME_NAME = st.context.theme.type or "light"
+except Exception:
+    THEME_NAME = "light"
+THEME = THEMES[THEME_NAME]
+CATEGORICAL = THEME["categorical"]
 PILLAR_COLOR = {
     "Transactional Banking": CATEGORICAL["blue"],
     "Global Markets": CATEGORICAL["orange"],
     "Investment Banking": CATEGORICAL["aqua"],
 }
 TIER_COLOR = {"primary": CATEGORICAL["blue"], "secondary": CATEGORICAL["orange"]}
-STATUS = {"good": "#0ca30c", "warning": "#fab219", "serious": "#ec835a", "critical": "#d03b3b"}
-SEQUENTIAL_BLUE = ["#cde2fb", "#9ec5f4", "#5598e7", "#256abf", "#0d366b"]
-INK_SECONDARY = "#52514e"
-GRID = "#e1e0d9"
+STATUS = THEME["status"]
+SEQUENTIAL_BLUE = THEME["sequential"]
+INK_SECONDARY = THEME["ink_secondary"]
+GRID = THEME["grid"]
 
-st.set_page_config(page_title="Syn Bank — Share of Wallet Intelligence Engine", layout="wide", page_icon="🏦")
+
+def chart_layout(**overrides) -> dict:
+    """Common Plotly layout kwargs for the active theme -- merge with
+    per-chart overrides so every chart follows the sidebar toggle instead of
+    hardcoding light-mode hex values."""
+    base = dict(
+        plot_bgcolor=THEME["surface"],
+        paper_bgcolor=THEME["surface"],
+        font=dict(color=THEME["ink_secondary"]),
+        xaxis=dict(gridcolor=THEME["grid"], linecolor=THEME["baseline"], color=THEME["ink_secondary"]),
+        yaxis=dict(gridcolor=THEME["grid"], linecolor=THEME["baseline"], color=THEME["ink_secondary"]),
+    )
+    for k, v in overrides.items():
+        if k in ("xaxis", "yaxis") and isinstance(v, dict) and k in base:
+            base[k] = {**base[k], **v}
+        else:
+            base[k] = v
+    return base
+
+
 
 
 # --------------------------------------------------------------------------
@@ -77,6 +139,7 @@ def load_data() -> dict[str, pd.DataFrame]:
     return {
         "entity_ranking": _read("opportunity_ranking_entity.parquet"),
         "pillar_ranking": _read("opportunity_ranking_pillar.parquet"),
+        "subcomponent_ranking": _read("opportunity_ranking_subcomponent.parquet"),
         "wallet_model": _read("wallet_model.parquet"),
         "competitor_events": _read("competitor_credit_events.parquet"),
         "financials": _read("financial_baseline.parquet"),
@@ -166,20 +229,18 @@ def page_portfolio_summary():
         textposition="outside",
         hovertemplate="%{y}<br>Expected value: R%{x:,.1f}m<extra></extra>",
     )
-    fig.update_layout(
+    fig.update_layout(**chart_layout(
         xaxis_title="Expected value (R millions)",
         yaxis=dict(autorange="reversed"),
         height=550,
         margin=dict(l=10, r=10, t=10, b=10),
-        plot_bgcolor="#fcfcfb",
-        paper_bgcolor="#fcfcfb",
-        xaxis=dict(gridcolor=GRID),
-    )
+    ))
     st.plotly_chart(fig, use_container_width=True)
 
     with st.expander("Full SA-domestic ranking table"):
-        disp = main[["rank", "entity_id", "entity_name", "sector", "total_expected_value_zar", "total_wallet_gap_zar", "win_probability", "top_pillar", "any_sequencing_flag"]].copy()
-        disp.columns = ["Rank", "ID", "Entity", "Sector", "Expected value", "Wallet gap", "Win prob.", "Top pillar", "Sequencing flag"]
+        st.caption("**Specific product** is the actual conversation to have — \"Transactional Banking\" alone doesn't say whether to pitch payment-fee pricing or cash management.")
+        disp = main[["rank", "entity_id", "entity_name", "sector", "total_expected_value_zar", "total_wallet_gap_zar", "win_probability", "top_sub_component_label", "any_sequencing_flag"]].copy()
+        disp.columns = ["Rank", "ID", "Entity", "Sector", "Expected value", "Wallet gap", "Win prob.", "Specific product", "Sequencing flag"]
         disp["Expected value"] = disp["Expected value"].map(r_fmt)
         disp["Wallet gap"] = disp["Wallet gap"].map(r_fmt)
         disp["Win prob."] = disp["Win prob."].map(lambda x: f"{x:.0%}")
@@ -245,10 +306,9 @@ def page_client_drilldown():
             text=epillar["wallet_gap_zar"].map(r_fmt), textposition="outside",
             hovertemplate="%{x}<br>Wallet gap: R%{y:,.1f}m<extra></extra>",
         )
-        fig.update_layout(
+        fig.update_layout(**chart_layout(
             yaxis_title="Wallet gap (R millions)", height=380, margin=dict(l=10, r=10, t=10, b=10),
-            plot_bgcolor="#fcfcfb", paper_bgcolor="#fcfcfb", yaxis=dict(gridcolor=GRID),
-        )
+        ))
         st.plotly_chart(fig, use_container_width=True)
         unknown = epillar["unknown_capture_tam_zar"].sum()
         if unknown > 0:
@@ -268,11 +328,33 @@ def page_client_drilldown():
             marker_color=CATEGORICAL["violet"],
             text=[f"{v:.2f}" for v in signals.values()], textposition="outside",
         )
-        fig.update_layout(
-            xaxis=dict(range=[0, 1], gridcolor=GRID), height=380, margin=dict(l=10, r=10, t=10, b=10),
-            plot_bgcolor="#fcfcfb", paper_bgcolor="#fcfcfb",
-        )
+        fig.update_layout(**chart_layout(
+            xaxis=dict(range=[0, 1]), height=380, margin=dict(l=10, r=10, t=10, b=10),
+        ))
         st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("Wallet gap by specific product (sub-component)")
+    st.caption(
+        "The finest grain the model computes — this is the actual conversation to walk in with, not just the "
+        "pillar. Bars colored by parent pillar; only 'confident' rows (both TAM and captured observable) shown."
+    )
+    esub = data["subcomponent_ranking"]
+    esub = esub[esub.entity_id == entity_id].sort_values("wallet_gap_zar", ascending=True)
+    if len(esub):
+        fig = go.Figure()
+        fig.add_bar(
+            x=esub["wallet_gap_zar"] / 1e6, y=esub["sub_component_label"], orientation="h",
+            marker_color=[PILLAR_COLOR.get(p, CATEGORICAL["blue"]) for p in esub["pillar"]],
+            text=esub["wallet_gap_zar"].map(r_fmt), textposition="outside",
+            hovertemplate="%{y}<br>Wallet gap: R%{x:,.1f}m<extra></extra>",
+        )
+        fig.update_layout(**chart_layout(
+            xaxis_title="Wallet gap (R millions)", height=280 + 24 * len(esub),
+            margin=dict(l=10, r=10, t=10, b=10), showlegend=False,
+        ))
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.caption("No sub-component-level rows for this client (all fell below the confidence threshold).")
 
     st.subheader("Top counterparties by value (this client only)")
     st.caption("Top 10 by observed value across all 3 ledgers — never a full network graph.")
@@ -284,11 +366,10 @@ def page_client_drilldown():
             x=tc["total_value_zar"] / 1e6, y=tc["beneficiary_name"], orientation="h",
             marker_color=colors, text=tc["total_value_zar"].map(r_fmt), textposition="outside",
         )
-        fig.update_layout(
+        fig.update_layout(**chart_layout(
             xaxis_title="Total value (R millions)", yaxis=dict(autorange="reversed"),
-            height=380, margin=dict(l=10, r=10, t=10, b=10), plot_bgcolor="#fcfcfb", paper_bgcolor="#fcfcfb",
-            xaxis=dict(gridcolor=GRID),
-        )
+            height=380, margin=dict(l=10, r=10, t=10, b=10),
+        ))
         st.plotly_chart(fig, use_container_width=True)
         if tc["is_known_competitor_bank"].any():
             st.caption("🔴 Red bars = a known competitor-credit beneficiary (see Competitor-Credit Finding page).")
@@ -326,7 +407,7 @@ def page_heatmap():
         labels=dict(color="Expected value (R m)"),
         text_auto=".1f",
     )
-    fig.update_layout(height=650, margin=dict(l=10, r=10, t=30, b=10), plot_bgcolor="#fcfcfb", paper_bgcolor="#fcfcfb")
+    fig.update_layout(**chart_layout(height=650, margin=dict(l=10, r=10, t=30, b=10)))
     fig.update_xaxes(side="top")
     st.plotly_chart(fig, use_container_width=True)
 
@@ -405,11 +486,10 @@ def page_competitor_credit():
     fig = go.Figure()
     for tier in ["primary", "secondary"]:
         fig.add_bar(x=by_entity.index, y=by_entity[tier], name=tier.title(), marker_color=TIER_COLOR[tier])
-    fig.update_layout(
+    fig.update_layout(**chart_layout(
         barmode="stack", yaxis_title="Value (R millions)", height=450,
-        margin=dict(l=10, r=10, t=10, b=10), plot_bgcolor="#fcfcfb", paper_bgcolor="#fcfcfb",
-        yaxis=dict(gridcolor=GRID), legend_title_text="Confidence tier",
-    )
+        margin=dict(l=10, r=10, t=10, b=10), legend_title_text="Confidence tier",
+    ))
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Sample extracted evidence")
@@ -433,11 +513,11 @@ def page_rigor():
         fig = px.histogram(mc, x="portfolio_share", nbins=40, color_discrete_sequence=[CATEGORICAL["blue"]])
         p5, p50, p95 = mc["portfolio_share"].quantile([0.05, 0.5, 0.95])
         fig.add_vline(x=p50, line_dash="dash", line_color=INK_SECONDARY, annotation_text="median")
-        fig.update_layout(
+        fig.update_layout(**chart_layout(
             xaxis_title="Portfolio blended share of wallet", yaxis_title="Iterations",
-            height=350, margin=dict(l=10, r=10, t=10, b=10), plot_bgcolor="#fcfcfb", paper_bgcolor="#fcfcfb",
-            xaxis=dict(tickformat=".0%", gridcolor=GRID), showlegend=False,
-        )
+            height=350, margin=dict(l=10, r=10, t=10, b=10),
+            xaxis=dict(tickformat=".0%"), showlegend=False,
+        ))
         st.plotly_chart(fig, use_container_width=True)
         st.caption(f"Base case never reported alone: 5th–95th percentile is {p5:.1%} – {p95:.1%}.")
 
@@ -483,6 +563,7 @@ page = st.sidebar.radio(
 )
 st.sidebar.divider()
 st.sidebar.caption(f"{len(EXPECTED_ENTITIES)} entities · Phases 1–6 complete · data as of latest `run_all.py`")
+st.sidebar.caption("Dark mode: **⋮ menu (top right) → Settings → App theme**. Charts follow it automatically.")
 
 {
     "Portfolio Summary": page_portfolio_summary,
