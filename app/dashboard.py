@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 import duckdb
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -201,6 +202,11 @@ def r_fmt(x: float, decimals: int = 1) -> str:
 def page_portfolio_summary():
     st.title("Portfolio Summary")
     st.caption("All figures trace back to `data/processed/*.parquet` — Phases 1–6. No number on this page is computed inline.")
+    st.markdown(
+        "20 JSE-listed corporate clients. **Wallet gap** = the banking revenue Syn Bank could plausibly "
+        "capture but doesn't yet; **expected value** = that gap × win probability × margin — the ranking "
+        "metric below, not raw gap size. Hover any metric for its definition."
+    )
 
     ent = data["entity_ranking"]
     main = ent[~ent.is_global_major].sort_values("total_expected_value_zar", ascending=False)
@@ -208,15 +214,33 @@ def page_portfolio_summary():
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Portfolio blended share (base case)", f"{mc['portfolio_share'].median():.1%}" if len(mc) else "n/a")
+        st.metric(
+            "Blended share of wallet", f"{mc['portfolio_share'].median():.1%}" if len(mc) else "n/a",
+            help="Syn Bank's captured revenue as a % of the total addressable banking wallet, portfolio-wide. "
+                 "This is the Monte Carlo median (2,000 iterations) — see the 5th–95th percentile below, never "
+                 "report the point estimate alone.",
+        )
         if len(mc):
             st.caption(f"5th–95th pct: {mc['portfolio_share'].quantile(0.05):.1%} – {mc['portfolio_share'].quantile(0.95):.1%}")
     with col2:
-        st.metric("Total expected-value opportunity (SA-domestic)", r_fmt(main["total_expected_value_zar"].sum()))
+        st.metric(
+            "Expected-value opportunity", r_fmt(main["total_expected_value_zar"].sum()),
+            help="SA-domestic entities only (global majors excluded — see below). Sum of wallet_gap × "
+                 "win_probability × margin across all 20 SA-domestic clients — the ranking metric, not raw gap size.",
+        )
     with col3:
-        st.metric("Total wallet gap (SA-domestic)", r_fmt(main["total_wallet_gap_zar"].sum()))
+        st.metric(
+            "Total wallet gap", r_fmt(main["total_wallet_gap_zar"].sum()),
+            help="SA-domestic entities only. The raw addressable-but-uncaptured revenue, before adjusting for "
+                 "win probability or margin — an upper bound, not a realistic near-term target on its own.",
+        )
     with col4:
-        st.metric("Entities flagged (sequencing risk)", f"{int(main['any_sequencing_flag'].sum())}/{len(main)}")
+        st.metric(
+            "Sequencing-flagged", f"{int(main['any_sequencing_flag'].sum())}/{len(main)}",
+            help="Entities with at least one Global Markets/Investment Banking recommendation that rests on a "
+                 "weak Transactional Banking relationship — 'win FX off the back of payment flow, not the "
+                 "reverse.' Their win probability is already penalised in the ranking below.",
+        )
 
     st.subheader("Ranked by expected value — SA-domestic entities")
     fig = go.Figure()
@@ -268,7 +292,15 @@ def page_client_drilldown():
 
     ent = data["entity_ranking"].sort_values("entity_name")
     labels = {row.entity_id: f"{row.entity_name} ({row.entity_id})" for row in ent.itertuples()}
-    entity_id = st.selectbox("Client", options=list(labels.keys()), format_func=lambda e: labels[e])
+    options = list(labels.keys())
+    # Default to the #1-ranked SA-domestic opportunity, not alphabetical-first --
+    # an alphabetically-first global major (with its own "not a realistic
+    # near-term target" caveat) is a poor first impression for a new viewer.
+    top_sa_domestic = data["entity_ranking"][~data["entity_ranking"].is_global_major].sort_values(
+        "total_expected_value_zar", ascending=False
+    ).iloc[0]["entity_id"]
+    default_index = options.index(top_sa_domestic) if top_sa_domestic in options else 0
+    entity_id = st.selectbox("Client", options=options, format_func=lambda e: labels[e], index=default_index)
 
     row = ent[ent.entity_id == entity_id].iloc[0]
     if row["is_global_major"]:
@@ -329,7 +361,9 @@ def page_client_drilldown():
             text=[f"{v:.2f}" for v in signals.values()], textposition="outside",
         )
         fig.update_layout(**chart_layout(
-            xaxis=dict(range=[0, 1]), height=380, margin=dict(l=10, r=10, t=10, b=10),
+            # range extends past 1.0 -- a bar at/near the max would otherwise
+            # clip its outside-positioned value label against the plot edge.
+            xaxis=dict(range=[0, 1.18]), height=380, margin=dict(l=10, r=10, t=10, b=10),
         ))
         st.plotly_chart(fig, use_container_width=True)
 
@@ -348,7 +382,11 @@ def page_client_drilldown():
             text=esub["wallet_gap_zar"].map(r_fmt), textposition="outside",
             hovertemplate="%{y}<br>Wallet gap: R%{x:,.1f}m<extra></extra>",
         )
+        # explicit range with headroom -- an outside-positioned label on the
+        # longest bar would otherwise clip against the plot's right edge.
+        max_val = (esub["wallet_gap_zar"] / 1e6).max()
         fig.update_layout(**chart_layout(
+            xaxis=dict(range=[0, max_val * 1.22]),
             xaxis_title="Wallet gap (R millions)", height=280 + 24 * len(esub),
             margin=dict(l=10, r=10, t=10, b=10), showlegend=False,
         ))
@@ -401,6 +439,8 @@ def page_heatmap():
     pv = p.pivot_table(index="entity_name", columns="pillar", values="expected_value_zar", aggfunc="sum") / 1e6
     pv = pv.reindex(columns=["Transactional Banking", "Global Markets", "Investment Banking"])
     pv = pv.loc[pv.sum(axis=1).sort_values(ascending=False).index]
+    pv = pv.rename_axis(index=None, columns=None)  # raw column/index names ("entity_name", "pillar")
+                                                     # would otherwise leak into the chart as axis labels
 
     fig = px.imshow(
         pv, color_continuous_scale=SEQUENTIAL_BLUE, aspect="auto",
@@ -503,11 +543,39 @@ def page_competitor_credit():
 # --------------------------------------------------------------------------
 # Page: Rigor & Assumptions
 # --------------------------------------------------------------------------
+# Human-readable labels for config/assumptions.yaml's dotted leaf paths, as
+# they appear in tornado_sensitivity.parquet's `assumption` column -- shown
+# instead of the raw path (e.g. "transactional_banking.fee_per_payment_zar.SWIFT")
+# so the tornado chart reads as a business assumption, not an internal key.
+ASSUMPTION_LABEL = {
+    "transactional_banking.payments_per_zar_throughput": "Payments per R of throughput (TAM driver)",
+    "transactional_banking.fee_per_payment_zar.SWIFT": "Payment fee — SWIFT",
+    "transactional_banking.fee_per_payment_zar.RTC": "Payment fee — RTC",
+    "transactional_banking.fee_per_payment_zar.EFT": "Payment fee — EFT",
+    "transactional_banking.fee_per_payment_zar.Debit Order": "Payment fee — Debit Order",
+    "transactional_banking.fee_per_payment_zar.Internal Transfer": "Payment fee — Internal Transfer",
+    "transactional_banking.avg_balance_days_of_revenue": "Avg balance held (days of revenue, TAM)",
+    "transactional_banking.deposit_nii_margin_bps": "Deposit NII margin (bps)",
+    "global_markets.fx_hedge_ratio": "FX hedge ratio",
+    "global_markets.fx_margin_bps": "FX margin (bps)",
+    "global_markets.floating_debt_ratio": "Floating-rate debt ratio",
+    "global_markets.irs_margin_bps": "Interest-rate-swap margin (bps)",
+    "investment_banking.instrument_bps_per_annum.letters_of_credit": "Trade finance bps — Letters of credit",
+    "investment_banking.instrument_bps_per_annum.guarantees": "Trade finance bps — Guarantees",
+    "investment_banking.instrument_bps_per_annum.export_collections": "Trade finance bps — Export collections",
+    "investment_banking.primary_bank_trade_finance_share": "Primary-bank trade finance share (TAM)",
+    "investment_banking.refinancing_cycle_years": "Refinancing cycle (years)",
+    "investment_banking.arrangement_fee_bps": "Debt arrangement fee (bps)",
+    "investment_banking.competitor_facility_arrangement_bps": "Competitor facility arrangement-fee proxy (bps)",
+}
+
+
 def page_rigor():
     st.title("Rigor & Assumptions")
     st.caption("Phase 5's stress-testing of every wallet-model assumption — see METHODOLOGY.md §6 for full derivations.")
 
     mc = data["monte_carlo"]
+    p50 = None
     if len(mc):
         st.subheader("Monte Carlo credible interval (2,000 iterations)")
         fig = px.histogram(mc, x="portfolio_share", nbins=40, color_discrete_sequence=[CATEGORICAL["blue"]])
@@ -521,15 +589,37 @@ def page_rigor():
         st.plotly_chart(fig, use_container_width=True)
         st.caption(f"Base case never reported alone: 5th–95th percentile is {p5:.1%} – {p95:.1%}.")
 
-    tornado_png = ROOT / "reports" / "tornado_chart.png"
-    if tornado_png.exists():
+    tornado = data["tornado"]
+    if len(tornado):
         st.subheader("Tornado sensitivity")
-        st.image(str(tornado_png))
+        st.caption(
+            "Swing in portfolio blended share of wallet as each assumption moves from its low to high "
+            "plausible value (`config/assumptions.yaml`), all others held at base case. Sorted by swing size "
+            "— the assumptions the answer is most sensitive to, at the top."
+        )
+        td = tornado.sort_values("share_swing_pp", ascending=True).copy()
+        td["label"] = td["assumption"].map(lambda a: ASSUMPTION_LABEL.get(a, a))
+        low_pct = np.minimum(td["share_at_low"], td["share_at_high"]) * 100
+        high_pct = np.maximum(td["share_at_low"], td["share_at_high"]) * 100
+        fig = go.Figure()
+        fig.add_bar(
+            x=(high_pct - low_pct), y=td["label"], base=low_pct, orientation="h",
+            marker_color=CATEGORICAL["blue"], customdata=high_pct,
+            hovertemplate="%{y}<br>Share range: %{base:.2f}%–%{customdata:.2f}%<extra></extra>",
+        )
+        if p50 is not None:
+            fig.add_vline(x=p50 * 100, line_dash="dash", line_color=INK_SECONDARY, annotation_text="base case")
+        fig.update_layout(**chart_layout(
+            xaxis_title="Portfolio blended share of wallet (%)", height=max(400, 28 * len(td) + 120),
+            margin=dict(l=10, r=10, t=10, b=10), showlegend=False,
+        ))
+        st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Entities below their sector's wallet-intensity line")
     sec = data["sector_reg"]
-    below = sec[sec["below_sector_line"]][["entity_name", "sector", "wallet_intensity", "z_score_in_sector"]]
+    below = sec[sec["below_sector_line"]][["entity_name", "sector", "wallet_intensity", "z_score_in_sector"]].copy()
     if len(below):
+        below.columns = ["Entity", "Sector", "Wallet intensity (TAM / revenue)", "Z-score within sector"]
         st.dataframe(below, use_container_width=True, hide_index=True)
     else:
         st.caption("None this run.")
@@ -540,7 +630,9 @@ def page_rigor():
     if len(sig):
         sig = sig.copy()
         sig["direction"] = sig["slope_zar_per_quarter"].apply(lambda s: "📈 growing" if s > 0 else "📉 shrinking")
-        st.dataframe(sig[["entity_name", "direction", "r_squared", "p_value"]], use_container_width=True, hide_index=True)
+        sig = sig[["entity_name", "direction", "r_squared", "p_value"]]
+        sig.columns = ["Entity", "Direction", "R²", "P-value"]
+        st.dataframe(sig, use_container_width=True, hide_index=True)
     else:
         st.caption("None this run.")
 
