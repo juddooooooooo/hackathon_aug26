@@ -50,7 +50,7 @@ Every phase is also independently runnable, e.g. `python -m src.ingest` or
 ## Repo layout
 
 ```
-config/assumptions.yaml        every yield/intensity assumption, named + sourced (Phase 4+)
+config/assumptions.yaml        every yield/intensity assumption, named + sourced (Phase 4)
 src/
   common.py                    shared paths, the 20-entity master list, the
                                 competitor-beneficiary fingerprint constants
@@ -59,7 +59,7 @@ src/
   ingest.py                    Phase 1 -- DuckDB load + profiling report
   forensics.py                 Phase 2 -- competitor-credit memo extraction [Gen AI]
   financials.py                Phase 3 -- external financial baseline [Gen AI]
-  wallet.py                    Phase 4 -- total wallet + Syn Bank's captured share    (not yet built)
+  wallet.py                    Phase 4 -- total wallet + Syn Bank's captured share
   uncertainty.py                Phase 5 -- Monte Carlo, sensitivity, triangulation     (not yet built)
   opportunity.py               Phase 6 -- expected-value opportunity ranking          (not yet built)
 app/                           Phase 8 -- Streamlit dashboard                         (not yet built)
@@ -84,8 +84,8 @@ happened so far. **[PLAN.md](PLAN.md)** is the full phase-by-phase backlog
 - [x] Phase 1 — Ingestion & profiling
 - [x] Phase 2 — Forensic extraction (Gen AI #1)
 - [x] Phase 3 — External financial baseline (Gen AI #2)
-- [ ] Phase 4 — Wallet model ← **next**
-- [ ] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation)
+- [x] Phase 4 — Wallet model
+- [ ] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation) ← **next**
 - [ ] Phase 6 — Opportunity ranking
 - [ ] Phase 7 — Bonus: cash-cycle timing, latency/cost optimisation
 - [ ] Phase 8 — Dashboard

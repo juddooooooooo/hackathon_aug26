@@ -5,7 +5,7 @@ Read this file first. Then:
 - **`PLAN.md`** — the full phase-by-phase backlog (authoritative scope, what's
   done, what's next, verbatim spec for unbuilt phases).
 - **`METHODOLOGY.md`** — rationale, data findings, and limitations for what
-  IS built. Every assumption behind Phase 1–2 lives here.
+  IS built. Every assumption behind Phase 1–4 lives here.
 - **`hackathon.txt`** — the official brief, for context on what's being judged.
 
 Do not start writing phase code from memory of what "share of wallet
@@ -13,13 +13,13 @@ hackathons usually look like" — this repo has already made a lot of
 specific, non-obvious decisions (see below). Read PLAN.md + METHODOLOGY.md
 first or you will redo work or contradict an earlier decision.
 
-## Status: Phase 3 of 8 complete
+## Status: Phase 4 of 8 complete
 
 - [x] Phase 1 — Ingestion & profiling
 - [x] Phase 2 — Forensic extraction (Gen AI #1)
 - [x] Phase 3 — External financial baseline (Gen AI #2)
-- [ ] Phase 4 — Wallet model **← start here**
-- [ ] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation)
+- [x] Phase 4 — Wallet model
+- [ ] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation) **← start here**
 - [ ] Phase 6 — Opportunity ranking
 - [ ] Phase 7 — Bonus modules (cash-cycle timing, latency/cost optimisation)
 - [ ] Phase 8 — Dashboard
@@ -30,12 +30,15 @@ a phase completes.
 ## Must-know before you touch anything
 
 1. **Domain rule**: share of wallet = revenue, never flow. R1bn of FX flow
-   is not R1bn of wallet. Every rand figure in Phase 1/2's output
+   is not R1bn of wallet. Every rand figure in Phase 1/2's raw output
    (`reports/profiling_report.md`, `reports/forensics_report.md`) is
-   **gross flow**, explicitly labelled as such. Phase 4 (not yet built) is
-   where flow becomes revenue, via named yield assumptions in
-   `config/assumptions.yaml` (skeleton exists, empty) — never hardcode a
-   yield coefficient inline in `src/wallet.py` or anywhere else.
+   **gross flow**, explicitly labelled as such. Phase 4 (`src/wallet.py`)
+   is where flow becomes revenue, via named yield assumptions in
+   `config/assumptions.yaml` (fully populated) — never hardcode a yield
+   coefficient inline in `src/wallet.py` or anywhere else; every fee/margin/
+   bps figure in that file has a rationale comment, most are informed
+   market-practice estimates (not published rate cards — SA banks don't
+   publish these), each a designated Phase 5 sensitivity-analysis input.
 2. **20 clients, not 50.** hackathon.txt says 50; the data has 20
    (E01–E20), validated consistent across all 3 files. Ground truth list:
    `src.common.EXPECTED_ENTITIES`. This is intentional and documented
@@ -74,7 +77,29 @@ a phase completes.
    baseline with no key configured (clearly flagged in its output), so you
    *can* work on non-LLM code without one — but you won't get real Gen AI
    results to show until you add a key.
-7. **Real bugs already found & fixed — don't reintroduce them.** All have
+7. **Two Phase 4 wallet-model facts Phase 6 (opportunity ranking) MUST
+   account for, not just inherit blindly:**
+   - `GLOBAL_MAJOR_ENTITIES` (`src/wallet.py`: E01 BHP, E02 Glencore, E03
+     Anglo American, E04 AngloGold Ashanti, E05 Gold Fields, E14 Prosus,
+     E15 Naspers, E20 Shaftesbury) report GLOBAL revenue in Phase 3, not
+     SA-specific — their TAM/share-of-wallet numbers are not on the same
+     footing as the other 12 entities. Do not rank them in the same list
+     by raw wallet-gap size without addressing this — see METHODOLOGY.md
+     §5.2.
+   - `df["tam_assumption_breach"]` in `wallet_model.parquet` flags rows
+     where captured revenue exceeds the modelled TAM (currently just
+     Pepkor's `deposit_nii`) — this means the TAM assumption is too
+     conservative for that entity, not that Syn Bank captured >100% of a
+     real market. Never silently clip `share_of_wallet` to 100%; it hides
+     a real signal. See METHODOLOGY.md §5.2.
+   - `captured_zar` is `None` (not `0`) for 3 sub-components
+     (`rate_hedging`, `debt_arrangement`, `competitor_credit_gap`) — no
+     derivatives book or "loans Syn Bank originated" table exists in any
+     source file, so these are structurally unobservable, not zero-capture
+     opportunities. Any Phase 6 ranking logic that treats a `None` as `0`
+     will systematically over-rank these as "total loss" opportunities
+     when the truth is "unknown."
+8. **Real bugs already found & fixed — don't reintroduce them.** All have
    regression tests (`tests/test_forensics.py`, `tests/test_llm.py`,
    `tests/test_financials.py`):
    - `a == b` on a pandas Series containing `None`/`NaN` is **not** the
@@ -151,7 +176,7 @@ a phase completes.
   null-handling, agreement/comparison/scoring logic) gets a
   `tests/test_*.py` unit test before you move on — every bug above was
   exactly this kind of thing. Run `python -m pytest tests/ -q` before
-  considering any change done (31 passing as of Phase 3).
+  considering any change done (43 passing as of Phase 4).
 - Update `METHODOLOGY.md` as you go (design rationale + a limitation you
   noticed), in the same session you build the phase — not as a last-minute
   writeup. Update this file's Session Log (below) before you end a session.
@@ -161,14 +186,14 @@ a phase completes.
 ```bash
 pip install -r requirements.txt
 cp .env.example .env      # fill in your OWN GEMINI_API_KEY
-python run_all.py                     # Phases 1-3 (everything built so far)
-python -m pytest tests/ -q            # 31 tests, all should pass, no API key needed
+python run_all.py                     # Phases 1-4 (everything built so far)
+python -m pytest tests/ -q            # 43 tests, all should pass, no API key needed
 ```
 
 Raw CSVs go in `data/` as `transactional_banking.csv`,
 `cross_border_payments.csv`, `trade_finance.csv` (gitignored — 392MB+33MB+3MB
 exceeds GitHub's 100MB single-file limit; get them from the team). Everything
-needed to inspect Phase 1–3 output *without* rerunning anything is already
+needed to inspect Phase 1–4 output *without* rerunning anything is already
 committed: `reports/`, `prompts/`, `data/processed/*.parquet`,
 `data/external/raw/` (Phase 3's fetched source text).
 
@@ -230,8 +255,11 @@ Final: ground-truth accuracy 19/19 (100.0%) after the fix, 31/31 tests
 passing, `python run_all.py` runs Phases 1-3 end to end in ~25s (fully
 cached). `foreign_revenue_pct` coverage is honestly low (30%, 6/20) and
 `debt_maturity_profile`/`undrawn_facilities` were scoped out of the schema
-entirely (see METHODOLOGY.md §5) — both worth reconsidering if Phase 4's
-Investment Banking pillar ends up needing them more than expected.
+entirely (see METHODOLOGY.md §6 limitations — renumbered after Phase 4
+landed; was §5 at the time this entry was written) — both worth
+reconsidering if Phase 4's Investment Banking pillar ends up needing them
+more than expected. (Verdict, Phase 4 session below: it didn't —
+`total_debt` alone was sufficient for the debt-arrangement TAM.)
 
 **Next agent: start Phase 4 (`src/wallet.py`) per `PLAN.md`.** This is
 where `config/assumptions.yaml` (currently an empty skeleton) gets
@@ -241,3 +269,55 @@ secondary tier) and Phase 3's `financial_baseline.parquet` are both ready
 to build against. Read METHODOLOGY.md §4.3 before trusting
 `foreign_revenue_pct` or `cost_of_sales` at face value for every entity —
 both have entity-specific caveats logged, not uniform confidence.
+
+### 2026-08-11 — Claude (Sonnet 5), Phase 4 (same day, continued session)
+
+Built Phase 4 (`src/wallet.py`) end to end and fully populated
+`config/assumptions.yaml` (was an empty skeleton). Three pillars per
+hackathon.txt (Transactional Banking, Global Markets, Investment Banking),
+each sub-component computing TAM and Syn Bank's captured revenue with the
+SAME yield so `share_of_wallet = captured/tam` is like-for-like. Where the
+captured side is structurally unobservable from the 3 source files (no
+derivatives book, no "loans Syn Bank originated" table) it's reported as
+`None`, never `0` — see "Must-know" #7 for exactly which 3 sub-components.
+
+**Two findings surfaced deliberately, not smoothed over** (full detail:
+METHODOLOGY.md §5.2, "Must-know" #7): a TAM-assumption breach on Pepkor's
+`deposit_nii` (captured > TAM — flagged via `tam_assumption_breach`
+column, not clipped to 100%), and a structural distortion for 8 dual-
+listed "global major" entities whose Phase 3 revenue is global not
+SA-specific, inflating their TAM denominator and making their low
+share-of-wallet numbers non-comparable to the other 12 entities.
+**Phase 6 must read `GLOBAL_MAJOR_ENTITIES` and `tam_assumption_breach`
+before ranking anyone — this is not optional cleanup, it changes the
+ranking.**
+
+Result: portfolio TAM R25.9bn, captured R1.2bn, blended share 4.6% (sum of
+observable sub-components only). 43/43 tests passing (12 new), `python
+run_all.py` runs Phases 1-4 end to end in ~15s (fully cached).
+`config/assumptions.yaml`'s fee/margin/bps figures are disclosed as
+informed market-practice estimates (no SA bank publishes a corporate
+pricing rate card), each named as a Phase 5 Monte Carlo/sensitivity
+target — this is intentional, not a placeholder to "fix" later; Phase 5's
+whole job is to quantify what these estimates being wrong does to the
+answer.
+
+**Next agent: start Phase 5 (`src/uncertainty.py`) per `PLAN.md`.** 30% of
+the mark scheme lives here. Priority order per the brief: (1) Monte Carlo
+over `config/assumptions.yaml`'s priors → report SOW as a credible
+interval; (2) tornado/sensitivity chart identifying which assumption moves
+the answer most (the payment-intensity and trade-finance-share assumptions
+are flagged in the yaml comments as the least-anchored — good candidates
+to come out on top, worth checking if they don't); (3) a second,
+independent SOW estimator based on revealed presence/product breadth to
+triangulate against the yield-based estimate in `wallet_model.parquet`
+— where the two diverge is explicitly called out in the brief as "the most
+interesting slide in the deck," don't bury it; (4) sector regression of
+wallet-intensity; (5) time-trend test (the brief already tells you
+aggregate volume is flat 2023-07 to 2026-06 — check whether that holds
+per-entity too, and say so either way, don't manufacture a trend that
+isn't there). Read METHODOLOGY.md §5 and §6 (limitations) in full before
+starting — several Phase 4 outputs (the TAM breach, the global-majors
+cohort, the 3 structurally-unobservable sub-components) are exactly the
+kind of thing a credible interval and a tornado chart should visibly
+reflect, not paper over.

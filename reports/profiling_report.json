@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T12:17:18",
+  "generated_at": "2026-08-11T12:38:11",
   "entity_master": [
     {
       "entity_id": "E01",
@@ -189,8 +189,8 @@
         "n": 2802875,
         "min": 205.35,
         "max": 64832717.95764583,
-        "sum": 405442910068.7132,
-        "mean": 144652.5121772156
+        "sum": 405442910068.71277,
+        "mean": 144652.51217721545
       },
       "n_distinct_entities": 20,
       "categoricals": {
@@ -616,8 +616,8 @@
             "copper": 1273,
             "telecom_equipment": 1254,
             "pharmaceuticals": 1242,
-            "chemicals": 1240,
             "iron_ore": 1240,
+            "chemicals": 1240,
             "gold": 1234,
             "agri_produce": 1205,
             "consumer_goods": 1200,
@@ -666,7 +666,7 @@
     },
     "transactional_banking": {
       "n_memo_rows": 3657.0,
-      "sum_memo_zar": 597220360.63,
+      "sum_memo_zar": 597220360.6300001,
       "n_bank_beneficiary": 1544.0,
       "sum_bank_beneficiary_zar": 452369428.13000005,
       "n_non_bank_beneficiary": 2113.0,

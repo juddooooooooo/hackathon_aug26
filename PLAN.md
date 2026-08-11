@@ -139,10 +139,10 @@ definitional discrepancy on Anglo American's cost of sales rather than
 silently picking a number (§4.2). `foreign_revenue_pct` coverage is
 honestly low (30%, 6/20) — not backfilled. Debt maturity profile and
 undrawn facilities were **not** built as separate fields this phase — see
-METHODOLOGY.md §5 limitations; `total_debt`'s current/non-current split is
+METHODOLOGY.md §6 limitations; `total_debt`'s current/non-current split is
 available in the raw source files if Phase 4 needs a coarser proxy.
 
-## Phase 4 — Wallet model ⬜
+## Phase 4 — Wallet model ✅ DONE
 
 Build the total wallet bottom-up, structured under Syn Bank's OWN three
 pillars as named in hackathon.txt: **Transactional Banking, Global
@@ -166,6 +166,28 @@ yields, so numerator and denominator are in identical units.
 > credit exposure. Every yield assumption goes in `config/assumptions.yaml`
 > (skeleton already created) with a source/rationale comment — see
 > CLAUDE.md "Must-know" #1.
+
+**Built as:** `src/wallet.py`, `config/assumptions.yaml` fully populated.
+Output: `data/processed/wallet_model.parquet` (long format, one row per
+entity × pillar × sub-component), `reports/wallet_report.md`. **Result:
+portfolio TAM R25.9bn, captured R1.2bn, blended share 4.6%** (sum of
+observable sub-components only — see below). Two findings surfaced rather
+than smoothed over: (1) a "TAM assumption breach" on Pepkor's
+`deposit_nii` (captured exceeds TAM — the 15-day-of-revenue assumption is
+demonstrably too conservative for that entity, flagged not clipped); (2)
+dual-listed global majors (BHP, Glencore, Anglo American, AngloGold
+Ashanti, Gold Fields, Prosus, Naspers, Shaftesbury) report GLOBAL not
+SA-specific revenue, inflating their TAM denominator and making their low
+share-of-wallet numbers not directly comparable to SA-domestic entities —
+**Phase 6 must treat this cohort separately, not rank by raw gap size.**
+Three sub-components (`rate_hedging`, `debt_arrangement`,
+`competitor_credit_gap`) have a captured side that's structurally
+unobservable from the provided data (no derivatives book, no
+"loans Syn Bank originated" table) — reported `None`, excluded from
+blended shares, not treated as R0 capture. Full derivation: METHODOLOGY.md
+§5. `debt_maturity_profile`/`undrawn_facilities` (Phase 3's scoped-out
+fields) were not needed — `total_debt` alone drives the debt-arrangement
+TAM.
 
 ## Phase 5 — Rigor layer ⬜ (30% of the marks lives here)
 

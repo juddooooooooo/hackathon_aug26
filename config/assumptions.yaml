@@ -1,43 +1,172 @@
 # Syn Bank Share of Wallet Intelligence Engine — yield & intensity assumptions
 #
-# EVERY assumption used anywhere in this pipeline to convert observed flow
-# or exposure into rands of BANK REVENUE lives in this file, with a source
-# or rationale comment on the same line (or directly above it). Never
-# hardcode a yield/intensity coefficient inline in src/wallet.py or
-# anywhere else — see CLAUDE.md "Must-know" #1 and METHODOLOGY.md §1 for
-# why: 30% of the mark scheme is analytical rigor, and "where does this
-# number come from" is the first question a judge will ask of any
-# wallet-sizing figure.
+# EVERY assumption used anywhere in this pipeline to convert observed flow or
+# exposure into rands of BANK REVENUE lives in this file, with a rationale
+# comment on the same line or directly above it. src/wallet.py reads this
+# file and never hardcodes a coefficient inline — see CLAUDE.md "Must-know"
+# #1 and METHODOLOGY.md §1 for why: 30% of the mark scheme is analytical
+# rigor, and "where does this number come from" is the first question a
+# judge will ask of any wallet-sizing figure.
 #
-# Not yet populated — this is Phase 4's (src/wallet.py) job. Structure
-# below follows Syn Bank's own three pillars per hackathon.txt and PLAN.md
-# Phase 4; adjust the shape as the data demands, but keep every leaf value
-# named and sourced.
+# IMPORTANT — what "sourced" means for this file: fee/margin/bps assumptions
+# below are NOT scraped from a specific published SA corporate-banking rate
+# card (banks don't publish these; they're commercially sensitive). They are
+# informed-market-practice estimates, each with a plausible range noted in
+# its comment, picked at the midpoint of that range. This is disclosed
+# explicitly, not presented as more precise than it is — every one of these
+# is a designated Phase 5 Monte Carlo / tornado-sensitivity input, which is
+# the correct rigor treatment for an estimate rather than a hard fact.
+# Figures genuinely anchored to something citable (the FX spot rates, the
+# Phase 2/3 pipeline outputs feeding into this file) are marked as such.
 
-# transactional_banking:
-#   fee_per_payment_zar:
-#     value: ...
-#     source: ...                # e.g. industry benchmark / rationale
-#   deposit_nii_margin_bps:
-#     value: ...
-#     source: ...
+# --------------------------------------------------------------------------
+# FX conversion — Phase 3's financial_baseline.parquet has entities in USD,
+# GBP, EUR, and ZAR (whichever currency each entity's own listing reports
+# in — see METHODOLOGY.md §4). Syn Bank's internal ledgers are 100% ZAR.
+# Every external figure must be converted to ZAR before it can be compared
+# to internally-observed captured revenue in the same units.
+# Spot rates retrieved 2026-08-11 (see reports/external_sources.md):
+fx_to_zar:
+  USD:
+    value: 16.1582
+    source: "https://finance.yahoo.com/quote/USDZAR=X/ , retrieved 2026-08-11"
+  GBP:
+    value: 22.2829
+    source: "https://www.xe.com/en-us/currencyconverter/convert/?Amount=1&From=GBP&To=ZAR , retrieved 2026-08-11"
+  EUR:
+    value: 18.6912
+    source: "https://www.xe.com/en-us/currencyconverter/convert/?Amount=1&From=EUR&To=ZAR , retrieved 2026-08-11"
+  ZAR:
+    value: 1.0
+    source: "identity -- already in ZAR"
 
-# global_markets:
-#   fx_spread_bps_by_pair:       # bps on hedged notional, per currency pair
-#     USD/ZAR: {value: ..., source: ...}
-#     EUR/ZAR: {value: ..., source: ...}
-#     GBP/ZAR: {value: ..., source: ...}
-#     AED/ZAR: {value: ..., source: ...}
-#     CNY/ZAR: {value: ..., source: ...}
-#   irs_notional_margin_bps:
-#     value: ...
-#     source: ...
+# --------------------------------------------------------------------------
+# Transactional Banking
+# --------------------------------------------------------------------------
+transactional_banking:
+  # Fee per payment, by channel -- captured side uses these directly against
+  # src.common's observed transaction counts per channel in
+  # transactional_banking.csv. Rationale: SA corporate transactional
+  # banking price schedules are not published, but relative ordering
+  # (SWIFT >> RTC > EFT > Debit Order/Internal Transfer, reflecting
+  # settlement-rail cost and value-added service level) is well
+  # established market practice; absolute levels are informed estimates
+  # at the middle of a plausible R5-R350 range per channel. Named Phase 5
+  # sensitivity target.
+  fee_per_payment_zar:
+    EFT: {value: 15, rationale: "domestic batch EFT -- lowest-cost SA payment rail"}
+    RTC: {value: 35, rationale: "real-time clearing -- instant payment, priced above EFT"}
+    "Internal Transfer": {value: 5, rationale: "same-bank intercompany sweep -- minimal marginal cost"}
+    "Debit Order": {value: 8, rationale: "collections rail, low per-unit cost at volume"}
+    SWIFT: {value: 250, rationale: "cross-border wire -- correspondent-banking cost passed through"}
 
-# investment_banking:
-#   arrangement_fee_bps:
-#     value: ...
-#     source: ...
-#   instrument_bps_per_annum:    # priced differently — guarantees != LCs
-#     letters_of_credit: {value: ..., source: ...}
-#     guarantees: {value: ..., source: ...}
-#     export_collections: {value: ..., source: ...}
+  # Payment-volume intensity for the TOTAL WALLET (TAM) side, where we do
+  # NOT observe the client's full transaction count (only Syn Bank's own).
+  # Driver per hackathon.txt Phase 4 spec: "revenue + opex -> payment
+  # volume". Rationale: (total_revenue + cost_of_sales) approximates gross
+  # transaction value flowing through the business (sales collections +
+  # supplier/COGS payments); assuming 1 payment transaction is generated
+  # per R75,000 of that combined throughput is a mid-range estimate for a
+  # large corporate with consolidated treasury operations (fewer, larger
+  # transactions than an SME). Phase 5 sensitivity target -- this is the
+  # least-anchored assumption in the whole model.
+  payments_per_zar_throughput:
+    value: 0.0000133333  # = 1 payment per R75,000 of (revenue + cost_of_sales)
+    rationale: "1 payment transaction per R75,000 of (total_revenue + cost_of_sales); large-corporate treasury consolidation assumption"
+
+  # Deposit NII -- captured side computed directly from the internal ledger
+  # (average running cash position implied by cumulative net flow through
+  # Syn Bank's accounts, see src/wallet.py compute_captured_avg_balance).
+  # TAM side needs an assumption since we don't have external balance-sheet
+  # cash data from Phase 3 (not extracted -- see METHODOLOGY.md §5).
+  deposit_nii_margin_bps:
+    value: 200
+    rationale: "spread a SA bank earns on operational deposits in a prime-linked environment; 150-300bps plausible range, 200bps midpoint"
+  avg_balance_days_of_revenue:
+    value: 15
+    rationale: "large corporates typically hold ~10-25 days of annual revenue as operating cash; 15-day midpoint, applied to total_revenue/365"
+
+# --------------------------------------------------------------------------
+# Global Markets
+# --------------------------------------------------------------------------
+global_markets:
+  # FX hedging -- captured side uses observed cross_border_payments.csv
+  # turnover directly (100% coverage, no assumption needed for the
+  # captured leg beyond the margin below). TAM side needs
+  # foreign_revenue_pct (Phase 3, null-propagates when not sourced -- see
+  # METHODOLOGY.md §4.3, only 30% coverage) and a hedge ratio.
+  fx_margin_bps:
+    value: 20
+    rationale: "hackathon.txt's own worked example: 10-30bps all-in margin on FX turnover for a large corporate; 20bps midpoint"
+  fx_hedge_ratio:
+    value: 0.6
+    rationale: "share of known FX revenue exposure a treasury function typically hedges (forwards/swaps) rather than leaves open; 50-80% plausible range, 60% midpoint"
+
+  # Rate hedging (IRS on floating-rate debt) -- TAM-only. Syn Bank's
+  # captured side is structurally unobservable from the provided data (no
+  # derivatives/swap book is in any of the 3 source files) -- reported as
+  # null captured, not zero, and excluded from the pillar's share-of-wallet
+  # ratio rather than silently treated as a missed R0 capture. See
+  # METHODOLOGY.md Phase 4 section.
+  floating_debt_ratio:
+    value: 0.4
+    rationale: "share of total corporate debt typically floating-rate rather than fixed in the SA market; 30-50% plausible range, 40% midpoint"
+  irs_margin_bps:
+    value: 10
+    rationale: "typical margin on an interest-rate-swap notional for a large corporate hedging floating-rate debt; 5-15bps plausible range, 10bps midpoint"
+
+# --------------------------------------------------------------------------
+# Investment Banking
+# --------------------------------------------------------------------------
+investment_banking:
+  # Debt-arrangement fees -- TAM computed from Phase 3's total_debt
+  # (company-wide, source-agnostic -- this is the true total wallet
+  # regardless of which bank(s) hold it). Captured side is NOT directly
+  # observable (no "loans Syn Bank itself originated" table exists) --
+  # reported as null, not zero. Phase 2's competitor_credit_events flow is
+  # used separately as a lower-bound signal of wallet confirmed held
+  # elsewhere (see competitor_facility_arrangement_bps below), not
+  # conflated with this TAM figure.
+  arrangement_fee_bps:
+    value: 100
+    rationale: "typical upfront arrangement fee on a new corporate credit facility; 50-150bps plausible range, 100bps midpoint"
+  refinancing_cycle_years:
+    value: 4
+    rationale: "assumed average years between new-facility arrangement/refinancing events for a large corporate debt book, converting a one-off fee into an annual run-rate"
+
+  # Trade finance instruments -- captured side is fully computable from
+  # trade_finance.csv (value_zar x tenor_days/365 x instrument-specific
+  # bps, per hackathon.txt's explicit Phase 4 driver). Differentiated by
+  # instrument_type per the brief's explicit instruction that "guarantees
+  # price differently from LCs" (higher capital/risk weight than a
+  # documentary LC; export collections are a lower-risk collection
+  # service, priced lowest).
+  instrument_bps_per_annum:
+    letters_of_credit: {value: 80, rationale: "documentary LC issuance/confirmation fee, per annum equivalent; 50-120bps plausible range"}
+    guarantees: {value: 150, rationale: "higher capital-weighted contingent liability than an LC; 100-200bps plausible range"}
+    export_collections: {value: 40, rationale: "lower-risk collection service, not a credit facility; 20-60bps plausible range"}
+
+  # TAM for trade-finance instruments specifically: we have no external
+  # market-size figure for a client's total trade-finance activity (unlike
+  # debt, which Phase 3's total_debt captures company-wide). Grossed up
+  # from Syn Bank's own captured trade-finance revenue by an assumed
+  # "share of wallet a primary-but-not-sole relationship bank typically
+  # holds for trade finance specifically" -- flagged as the most
+  # assumption-driven TAM figure in the model; Phase 5 should stress-test
+  # this hardest of all inputs (a wide credible interval belongs on this
+  # one, not false precision).
+  primary_bank_trade_finance_share:
+    value: 0.45
+    rationale: "a corporate typically splits trade-finance instrument issuance across 2-3 relationship banks; 45% assumed share for a primary-tier bank (35-55% plausible range)"
+
+  # Competitor-held credit exposure (Phase 2 signal) -- expressed as a
+  # revenue-equivalent using the SAME arrangement_fee_bps as the
+  # debt-arrangement TAM above, for unit consistency. This is a LOWER
+  # BOUND / proxy, not a precise calculation: Phase 2's flow is
+  # settlement-leg payment value, not confirmed facility principal, so
+  # applying an arrangement-fee-style bps to it is a deliberate
+  # simplification -- flagged here and in METHODOLOGY.md, not presented
+  # as equivalent precision to the debt-arrangement TAM.
+  competitor_facility_arrangement_bps:
+    value: 100
+    rationale: "same as arrangement_fee_bps above, applied to Phase 2's competitor-credit flow as a revenue-equivalent lower-bound proxy for confirmed externally-held wallet -- NOT a precise facility-principal calculation, see METHODOLOGY.md Phase 4 section"

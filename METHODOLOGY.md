@@ -356,8 +356,164 @@ alternate sources (BHP's and MTN's own results releases, Yahoo Finance,
 Wikipedia for NEPI Rockcastle's portfolio composition), not just re-read
 from the same aggregator the pipeline used.
 
-## 5. Limitations (running list — extended every phase)
+## 5. Phase 4 — Wallet model (`src/wallet.py`)
 
+Builds, per entity, per sub-component under Syn Bank's own three pillars
+(Transactional Banking, Global Markets, Investment Banking): a **TAM**
+(total addressable wallet, all banks) and Syn Bank's **captured** revenue,
+both in rands of bank revenue via the named yield/intensity assumptions in
+`config/assumptions.yaml`. Every fee/margin/bps assumption is disclosed as
+an *informed market-practice estimate* with a plausible range in its
+comment, not a scraped published rate card (SA banks don't publish these)
+— each is a designated Phase 5 Monte Carlo / tornado-sensitivity input.
+FX spot rates (USD/GBP/EUR → ZAR, needed because Phase 3's entities report
+in 4 different currencies while every internal ledger is 100% ZAR) are the
+one genuinely-sourced figures in the file — see `reports/external_sources.md`.
+
+**Design principle:** captured and TAM are computed with the *same* yield
+for every sub-component where both sides are observable, so
+`share_of_wallet = captured / tam` is a like-for-like ratio. Three
+sub-components (`rate_hedging`, `debt_arrangement`, and the diagnostic
+`competitor_credit_gap` row) have a captured side that is **structurally
+unobservable** from the three source files — no derivatives/swap book and
+no "loans Syn Bank itself originated" table exists anywhere in the
+provided data. These are reported with `captured_zar = None`, not `0` —
+conflating "we don't know" with "Syn Bank captured nothing" would
+understate the pillar's true (unknown) capture and overstate the
+opportunity size.
+
+### 5.1 Pillar-by-pillar
+
+**Transactional Banking** — `payment_fees`: captured = observed Syn Bank
+transaction count per channel (`transactional_banking.csv`) × a
+channel-specific fee (SWIFT priced highest, Internal Transfer lowest, per
+market practice); TAM = (`total_revenue` + `cost_of_sales`, Phase 3) as a
+gross-throughput proxy × a payments-per-rand intensity assumption × a
+blended fee — the "revenue + opex → payment volume" driver named
+explicitly in the brief. `deposit_nii`: captured = an average operating
+balance computed **directly from the ledger** (daily net inflow/outflow
+per entity, cumulative-summed into a running balance, floored at 0,
+averaged over the 3-year window — no assumption needed for this side) ×
+a deposit margin; TAM = `total_revenue` × an assumed days-of-revenue
+operating-cash-balance × the same margin.
+
+**Global Markets** — `fx_hedging`: captured = observed
+`cross_border_payments.csv` turnover (100% coverage) × an FX margin
+(hackathon.txt's own worked example, 10–30bps); TAM = `foreign_revenue_pct`
+(Phase 3, only 30% coverage — null-propagates for the other 70%, per
+METHODOLOGY.md §4.3) × `total_revenue` × an assumed hedge ratio × the same
+margin. `rate_hedging` (IRS on floating-rate debt): TAM only, from
+`total_debt` × an assumed floating-rate share × an IRS margin — captured
+is structurally unobservable (see above).
+
+**Investment Banking** — `trade_finance_instruments`: fully computable
+both sides from `trade_finance.csv` — captured = Σ(`value_zar` ×
+`tenor_days`/365 × an **instrument-specific** bps, guarantees priced
+above LCs above export collections, per the brief's explicit instruction);
+TAM is grossed up from captured by an assumed "share of a client's
+trade-finance business a primary-but-not-sole bank typically holds" —
+flagged in `config/assumptions.yaml` as the single most assumption-driven
+TAM in the model, since no external trade-finance-market-size figure
+exists anywhere in Phase 3. `debt_arrangement`: TAM = `total_debt`
+(company-wide, source-agnostic — genuinely the full market regardless of
+which bank(s) hold it) × an arrangement-fee bps, amortised over an
+assumed refinancing cycle; captured is structurally unobservable.
+`competitor_credit_gap` (diagnostic, not additive to the TAM above): Phase
+2's `competitor_credit_events.parquet` flow, converted to a
+revenue-equivalent using the *same* arrangement-fee bps as `debt_arrangement`
+— explicitly flagged as a lower-bound proxy (settlement-leg payment value
+is not the same thing as confirmed facility principal) confirming wallet
+held elsewhere, feeding Phase 6's opportunity ranking directly rather than
+being folded into a single TAM number with false precision.
+
+### 5.2 Two findings this run surfaced, not smoothed over
+
+**TAM assumption breaches.** Pepkor Holdings' `deposit_nii` sub-component
+shows `share_of_wallet = 121.4%` — captured (R95.2m, computed directly
+from the ledger) exceeds the assumed TAM (R78.4m, from a 15-day-of-revenue
+heuristic). This is logically impossible for a genuine total-addressable
+market and was **not clipped to 100%** — clipping would hide the real
+signal, which is that the 15-day assumption is demonstrably too
+conservative for at least this entity (a high-volume cash-generative
+retail group plausibly runs materially larger consolidated collection
+balances than a blanket days-of-revenue heuristic predicts). Flagged
+programmatically (`tam_assumption_breach` column) and in
+`reports/wallet_report.md`'s dedicated callout — a concrete, named example
+for Phase 5's sensitivity work, not a bug papered over.
+
+**Dual-listed global majors distort their own denominator.** BHP,
+Glencore, Anglo American, AngloGold Ashanti, Gold Fields, Prosus, Naspers,
+and Shaftesbury Capital (`GLOBAL_MAJOR_ENTITIES` in `src/wallet.py`) report
+`total_revenue` (Phase 3) as their **entire global** figure — there is no
+South-Africa-specific revenue split available anywhere in the source data.
+Every TAM computed from that revenue is therefore an upper bound on a
+*global* scale, not a realistic addressable market for a SA-focused bank:
+these entities' unusually low share-of-wallet numbers (e.g. BHP's payment-
+fees share is 0.4%) reflect an inflated denominator — Syn Bank was never
+competing for BHP's global treasury mandate — not a large realistic growth
+opportunity. Reported prominently rather than left for a reader to
+discover by accident; **Phase 6 should discount or separately flag this
+cohort rather than rank them purely on raw wallet-gap size** (see the
+dedicated callout in `reports/wallet_report.md`).
+
+### 5.3 Results
+
+Portfolio-level (sum of observable sub-components, `reports/wallet_report.md`):
+**TAM R25.9bn, captured R1.2bn, blended share 4.6%.** By pillar: Global
+Markets 11.7%, Transactional Banking 4.9%, Investment Banking 1.5% (the
+lowest of the three — expected, given two of its three sub-components have
+a structurally-unobservable captured side and the third's TAM is the most
+assumption-driven figure in the model). Per-entity share ranges from 0.7%
+(Glencore, NEPI Rockcastle, Shaftesbury — the global majors/foreign REITs)
+to 59.8% (Pepkor Holdings, partly inflated by the TAM assumption breach
+above — read alongside §5.2, not at face value).
+
+## 6. Limitations (running list — extended every phase)
+
+- **Every fee/margin/bps assumption in `config/assumptions.yaml` is an
+  informed market-practice estimate, not a published rate card** (see §5
+  intro) — this is the single biggest source of uncertainty in the whole
+  wallet model, by design the thing Phase 5's Monte Carlo / tornado
+  sensitivity analysis exists to quantify. Point estimates in
+  `reports/wallet_report.md` should not be read as more precise than a
+  midpoint of a plausible range.
+- **The TAM assumption breach on Pepkor's `deposit_nii` (§5.2) is not an
+  isolated one-off**: any entity whose Syn Bank-observed cash flow is
+  large relative to its external revenue could trip the same check.
+  Flagged programmatically rather than fixed by hand-tuning the 15-day
+  assumption until this one case disappears — that would be curve-fitting
+  to a single data point, not a real fix.
+- **Dual-listed global majors' share-of-wallet numbers are not directly
+  comparable to SA-domestic entities' numbers** (§5.2) — no SA-specific
+  revenue split exists in the source data to correct for this. Any
+  cross-entity ranking (Phase 6) must treat this cohort separately, not
+  sort them into the same list by raw wallet-gap size.
+- **Insurers' `payment_fees` TAM throughput uses `total_revenue` alone**
+  (no `cost_of_sales` — not a meaningful concept for an insurer, correctly
+  `null` per Phase 3 — see METHODOLOGY.md §4), which is a smaller
+  denominator than non-insurers' `revenue + cost_of_sales` throughput
+  base. This is directionally defensible (insurers genuinely have a
+  smaller gross-transaction-value base relative to revenue than a
+  retailer), but it means Sanlam's and OUTsurance's `payment_fees` shares
+  are not on a perfectly like-for-like basis with the other 18 entities —
+  flagged rather than corrected with an invented insurer-specific
+  intensity assumption this phase.
+- **`rate_hedging`, `debt_arrangement`, and `competitor_credit_gap` have a
+  structurally unobservable captured side** — reported as `None`, not
+  `0`, and excluded from every blended/summed share-of-wallet figure.
+  This means the Investment Banking pillar's 1.5% blended share (§5.3)
+  undercounts Syn Bank's true capture of debt-related revenue by an
+  unknown amount, not a known one — the honest reading is "this pillar's
+  measured share is a lower bound with an unquantified gap," not "this
+  pillar's capture is genuinely only 1.5%."
+- **`trade_finance_instruments`' TAM (grossed up from captured at an
+  assumed 45% primary-bank share) is circular by construction** — it
+  cannot show Syn Bank capturing more or less than 45% of this specific
+  sub-component's TAM by design, since TAM is *derived from* captured, not
+  independently estimated. It exists to give the sub-component a
+  revenue-comparable TAM figure at all (no external trade-finance-market
+  size exists in the data) but should not be read as an independent
+  signal the way `debt_arrangement`'s TAM (from Phase 3's `total_debt`) is.
 - **20 vs. 50 clients**: see §0. Every per-client statistic in this
   submission covers the 20 entities actually in the data.
 - **No supplied financial-statement PDFs**: see §0; Phase 3 sources

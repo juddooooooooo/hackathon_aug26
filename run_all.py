@@ -15,7 +15,7 @@ Phases (see METHODOLOGY.md for what each one does and why):
     1. ingest     -- src/ingest.py     (DuckDB load + profiling report)
     2. forensics  -- src/forensics.py  (competitor-credit memo extraction) [Gen AI #1]
     3. financials -- src/financials.py (external financial baseline)       [Gen AI #2]
-    4. wallet     -- src/wallet.py     (total wallet + Syn Bank share)                  -- not yet built
+    4. wallet     -- src/wallet.py     (total wallet + Syn Bank share)
     5. uncertainty-- src/uncertainty.py(Monte Carlo, sensitivity, triangulation)         -- not yet built
     6. opportunity-- src/opportunity.py(expected-value ranking)                          -- not yet built
     7. bonus      -- cash-cycle timing + latency/cost optimisation                       -- not yet built
@@ -32,7 +32,7 @@ from src.common import configure_logging
 
 logger = logging.getLogger("run_all")
 
-PHASES = ["ingest", "forensics", "financials"]  # extended as later phases are built
+PHASES = ["ingest", "forensics", "financials", "wallet"]  # extended as later phases are built
 
 
 def main() -> None:
@@ -80,6 +80,14 @@ def main() -> None:
             sys.argv.append("--no-llm")
         sys.argv += ["--max-workers", str(args.max_workers)]
         financials_main()
+
+    if "wallet" in run_until:
+        logger.info("=" * 70)
+        logger.info("PHASE 4 -- Wallet Model")
+        logger.info("=" * 70)
+        from src.wallet import main as wallet_main
+
+        wallet_main()
 
     elapsed = time.perf_counter() - t_start
     logger.info("=" * 70)
