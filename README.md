@@ -60,7 +60,7 @@ src/
   forensics.py                 Phase 2 -- competitor-credit memo extraction [Gen AI]
   financials.py                Phase 3 -- external financial baseline [Gen AI]
   wallet.py                    Phase 4 -- total wallet + Syn Bank's captured share
-  uncertainty.py                Phase 5 -- Monte Carlo, sensitivity, triangulation     (not yet built)
+  uncertainty.py                Phase 5 -- Monte Carlo, sensitivity, triangulation
   opportunity.py               Phase 6 -- expected-value opportunity ranking          (not yet built)
 app/                           Phase 8 -- Streamlit dashboard                         (not yet built)
 data/external/raw/             Phase 3's fetched source text (committed, evidence for extraction)
@@ -85,7 +85,7 @@ happened so far. **[PLAN.md](PLAN.md)** is the full phase-by-phase backlog
 - [x] Phase 2 — Forensic extraction (Gen AI #1)
 - [x] Phase 3 — External financial baseline (Gen AI #2)
 - [x] Phase 4 — Wallet model
-- [ ] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation) ← **next**
-- [ ] Phase 6 — Opportunity ranking
+- [x] Phase 5 — Rigor layer (Monte Carlo, sensitivity, triangulation)
+- [ ] Phase 6 — Opportunity ranking ← **next**
 - [ ] Phase 7 — Bonus: cash-cycle timing, latency/cost optimisation
 - [ ] Phase 8 — Dashboard

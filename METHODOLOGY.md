@@ -456,19 +456,177 @@ discover by accident; **Phase 6 should discount or separately flag this
 cohort rather than rank them purely on raw wallet-gap size** (see the
 dedicated callout in `reports/wallet_report.md`).
 
-### 5.3 Results
+### 5.3 A bug found computing the blend, fixed before Phase 5 built on it
 
-Portfolio-level (sum of observable sub-components, `reports/wallet_report.md`):
-**TAM R25.9bn, captured R1.2bn, blended share 4.6%.** By pillar: Global
-Markets 11.7%, Transactional Banking 4.9%, Investment Banking 1.5% (the
-lowest of the three — expected, given two of its three sub-components have
-a structurally-unobservable captured side and the third's TAM is the most
-assumption-driven figure in the model). Per-entity share ranges from 0.7%
-(Glencore, NEPI Rockcastle, Shaftesbury — the global majors/foreign REITs)
-to 59.8% (Pepkor Holdings, partly inflated by the TAM assumption breach
+The first version of the portfolio-level blend summed `tam_zar` and
+`captured_zar` **independently** (`dropna()` per column, then sum) rather
+than only over rows where both are observable. This double-dips:
+`fx_hedging`'s captured leg is observable for every entity (we always see
+FX turnover in `cross_border_payments.csv`), but its TAM is null for the
+14/20 entities missing `foreign_revenue_pct` — an independent-sum blend
+counted that captured revenue (R218.9m across those 14 entities) in the
+numerator with no matching TAM in the denominator, inflating the blended
+portfolio share from a correct 5.3% to a wrong 4.6%. Fixed
+(`src.wallet.blended_tam_and_captured`, row-aligned sum, regression-tested
+in `tests/test_wallet.py`) before this number propagated into Phase 5 or
+Phase 6 — caught by the same discipline as every other bug on this
+project: check the actual numbers, don't trust that a script running
+without an exception means the output is correct.
+
+### 5.4 Results
+
+Portfolio-level (sum of observable sub-components on the SAME row,
+`reports/wallet_report.md`): **TAM R18.6bn, captured R977.3m, blended
+share 5.3%.** By pillar: **Investment Banking 45.0%** — but this figure is
+circular by construction (§5.1: its only row-aligned sub-component,
+`trade_finance_instruments`, has TAM *derived from* captured at a fixed
+45% share, so it cannot show anything other than exactly 45% — a visible,
+concrete illustration of the limitation already flagged in
+`config/assumptions.yaml`, not a real 45% capture rate). Transactional
+Banking 4.9%, Global Markets 3.8% (now a much smaller, more honestly-based
+blend — only the 6 entities with a sourced `foreign_revenue_pct`
+contribute). Per-entity share ranges from 0.6% (Valterra Platinum) to
+62.7% (Pepkor Holdings, partly inflated by the TAM assumption breach
 above — read alongside §5.2, not at face value).
 
-## 6. Limitations (running list — extended every phase)
+## 6. Phase 5 — Rigor layer (`src/uncertainty.py`)
+
+30% of the mark scheme lives in this phase. Five analyses per hackathon.txt's
+own Phase 5 spec, all built on the SAME `config/assumptions.yaml` Phase 4
+uses — `low`/`high` ranges were added to every leaf specifically for this
+phase (see the file's own comments), never a second, disconnected set of
+"uncertainty parameters" invented after the fact.
+
+**Performance note, since it shapes the design:** `src/wallet.py`'s
+`build_wallet_model()` was refactored to accept pre-loaded internal
+ledgers / financials / competitor events, so Monte Carlo iterations only
+re-run the (cheap) yield arithmetic, not the (expensive) DuckDB/parquet
+reads — 2,000 iterations run in under 3 minutes.
+
+### 6.1 Monte Carlo credible interval
+
+Every wallet-model assumption (17 leaves under `transactional_banking`,
+`global_markets`, `investment_banking` — FX spot rates excluded, they're
+observed facts not estimates) is sampled uniformly between its `low` and
+`high` bound, 2,000 times, recomputing the full wallet model each draw.
+**Result: portfolio blended share 5.3% base case, 5th–95th percentile
+credible interval 3.1%–6.8%** (median 4.6%). By pillar, Investment
+Banking's interval is wide (36.1%–53.9%) because — as §6.2 below makes
+explicit — its only row-aligned sub-component is *mechanically* bounded by
+the `primary_bank_trade_finance_share` assumption's own low/high range.
+**The headline number for this submission is the interval, not the 5.3%
+point estimate** — reporting a bare point estimate for a figure this
+assumption-dependent would misrepresent the actual precision achieved.
+
+### 6.2 Tornado sensitivity
+
+Each of the 17 assumptions is varied across its full range with every
+other assumption held at its base-case value; the resulting swing in
+portfolio blended share is measured and ranked (`reports/tornado_chart.png`,
+`data/processed/tornado_sensitivity.parquet`). **Top 4, all in
+Transactional Banking**: `payments_per_zar_throughput` (3.3pp swing —
+exactly the assumption flagged in `config/assumptions.yaml` as
+least-anchored, confirmed empirically, not just by intuition),
+`fee_per_payment_zar.SWIFT`, `avg_balance_days_of_revenue`,
+`deposit_nii_margin_bps`.
+
+**5 assumptions show exactly 0.00pp swing** on the blended-share metric —
+not a bug, and specifically not evidence those assumptions don't matter.
+`blended_tam_and_captured` (§5.3) only sums sub-components where BOTH
+sides are observable on the same row; `floating_debt_ratio`,
+`refinancing_cycle_years`, `arrangement_fee_bps`, `irs_margin_bps`, and
+`competitor_facility_arrangement_bps` exclusively drive TAM on the 3
+sub-components with a structurally-unobservable captured side, which are
+excluded from the share RATIO by construction. Their real, non-zero
+effect on total addressable wallet is shown separately via an
+*independent* (not row-aligned) TAM sum in the same table's
+`tam_swing_R_m` column — e.g. `arrangement_fee_bps` alone swings TAM by
+over R6bn despite a 0.00pp effect on the share metric. Reported both ways
+deliberately, so neither column can be misread in isolation.
+
+### 6.3 Second, independent SOW estimator — revealed presence
+
+Not derived from any yield assumption: a 0–1 breadth score per entity from
+how many of Syn Bank's product channels (5), trade-finance instrument
+types (3), and country corridors (of 34 observed) each entity actually
+uses — pure observed coverage ratios, no assumption needed for the score
+itself. Mapped onto a SOW-comparable percentage via a disclosed
+calibration (`revealed_presence.sow_floor_pct` / `sow_ceiling_pct` in
+`config/assumptions.yaml`, 5%–45% base case) explicitly flagged as a rough
+calibration, not a precision instrument.
+
+**Where the two estimators diverge is the most interesting finding here**
+(hackathon.txt's own words) — and the pattern is systematic, not scattered
+noise: **17/20 entities show presence-based meaningfully above
+yield-based**, often by 25–40 percentage points. This is not read as "the
+yield-based estimates are all wrong" — all 20 entities in this portfolio
+are large, actively-engaged corporates already using most of Syn Bank's
+product range (breadth scores cluster tightly, 0.77–0.91), which gives the
+revealed-presence method little room to *discriminate* within this
+specific, already-broad client set. The size of the systematic divergence
+is itself evidence about the METHOD's limited power here, not a claim
+about the true SOW.
+
+**The one entity that runs the other way is the genuinely useful
+cross-check**: Pepkor Holdings, at –21.5pp — its yield-based share (62.7%)
+*exceeds* even the top of the presence-based range (41.2%). This is the
+same entity flagged with a TAM-assumption breach in Phase 4 (§5.2) — an
+estimator built from completely different inputs, with no knowledge of
+that breach, independently lands well below the yield-based figure. That
+corroborates the Phase 4 finding: Pepkor's 62.7% is inflated by an
+over-conservative `avg_balance_days_of_revenue` assumption, not a genuine
+outlier level of capture. This is triangulation actually doing its job —
+two independent methods bracketing a more plausible truth.
+
+### 6.4 Sector regression of wallet-intensity
+
+`wallet_intensity = TAM / revenue` computed per entity (blended across all
+observable TAM sub-components), then compared within-sector (z-score,
+sectors with <3 peers explicitly marked "not scored," not force-fit to a
+meaningless statistic) and via a portfolio-wide log-log regression
+(log TAM ~ log revenue, n=20, R²=0.82). **2 entities flagged below their
+sector line**: Valterra Platinum (mining, z=–1.15) and Clicks Group
+(consumer, z=–1.09) — both marginal breaches just past the -1.0 threshold,
+not dramatic outliers.
+
+**Why this analysis is structurally muted for most pillars, disclosed
+rather than hidden**: because `payments_per_zar_throughput` and
+`avg_balance_days_of_revenue` make Transactional Banking's TAM
+*deliberately proportional to revenue* by construction (a fixed global
+coefficient × revenue, for every entity), wallet-intensity for that pillar
+is nearly constant across the whole portfolio by design — a sector
+regression on it would mostly just confirm the assumption is applied
+uniformly, not reveal anything new. The genuinely informative signal
+concentrates in the sub-components where TAM does NOT scale purely with
+revenue: `debt_arrangement` (driven by `total_debt`, which varies
+independently of revenue) and `trade_finance_instruments` (driven by
+Syn Bank's own observed activity). This is a structural property of the
+Phase 4 model, not a flaw in the regression — flagged so a reader doesn't
+expect this analysis to surface more than it structurally can.
+
+### 6.5 Time-trend test
+
+Quarterly volume (all 3 source files combined), linear trend test per
+entity (20 tests) and per currency-pair corridor (5 tests — hackathon.txt
+already notes there are only 5, all used by all 20 entities). **At raw
+p<0.05: 9/20 entities and 0/5 corridors show a significant trend.**
+Testing 25 series at once risks ~1.25 false positives by chance alone even
+with no real trend anywhere — at a **Bonferroni-adjusted threshold, 5/20
+entities and 0/5 corridors remain significant**.
+
+**Corridors are flat, fully consistent with Phase 1's aggregate finding**
+(quarterly volume R10.4–12.7bn, no drift, 2023-07 to 2026-06) — stated
+plainly, not manufactured into something more interesting than the data
+supports. **But 5 individual entities DO show a trend robust enough to
+survive Bonferroni correction**: BHP Group (growing, R²=0.75), Anglo
+American (shrinking, R²=0.92), OUTsurance Group (growing, R²=0.94), Sanlam
+(shrinking, R²=0.99), NEPI Rockcastle (growing, R²=0.84). The correct
+reading is **both** things at once — "the portfolio in aggregate is flat"
+AND "a handful of specific clients are moving" — not one fact overriding
+the other. These 5 are genuine per-client signals worth a coverage
+banker's attention independent of the portfolio-level story.
+
+## 7. Limitations (running list — extended every phase)
 
 - **Every fee/margin/bps assumption in `config/assumptions.yaml` is an
   informed market-practice estimate, not a published rate card** (see §5

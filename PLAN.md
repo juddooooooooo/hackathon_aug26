@@ -139,7 +139,7 @@ definitional discrepancy on Anglo American's cost of sales rather than
 silently picking a number (§4.2). `foreign_revenue_pct` coverage is
 honestly low (30%, 6/20) — not backfilled. Debt maturity profile and
 undrawn facilities were **not** built as separate fields this phase — see
-METHODOLOGY.md §6 limitations; `total_debt`'s current/non-current split is
+METHODOLOGY.md §7 limitations; `total_debt`'s current/non-current split is
 available in the raw source files if Phase 4 needs a coarser proxy.
 
 ## Phase 4 — Wallet model ✅ DONE
@@ -167,11 +167,14 @@ yields, so numerator and denominator are in identical units.
 > (skeleton already created) with a source/rationale comment — see
 > CLAUDE.md "Must-know" #1.
 
-**Built as:** `src/wallet.py`, `config/assumptions.yaml` fully populated.
-Output: `data/processed/wallet_model.parquet` (long format, one row per
-entity × pillar × sub-component), `reports/wallet_report.md`. **Result:
-portfolio TAM R25.9bn, captured R1.2bn, blended share 4.6%** (sum of
-observable sub-components only — see below). Two findings surfaced rather
+**Built as:** `src/wallet.py`, `config/assumptions.yaml` fully populated
+(with `low`/`high` ranges on every estimate, added for Phase 5). Output:
+`data/processed/wallet_model.parquet` (long format, one row per entity ×
+pillar × sub-component), `reports/wallet_report.md`. **Result: portfolio
+TAM R18.6bn, captured R977.3m, blended share 5.3%** (sum of sub-components
+where BOTH sides are observable on the SAME row — an independent-sum
+version of this blend was briefly wrong at 4.6%, found and fixed before
+Phase 5 built on it, see METHODOLOGY.md §5.3). Findings surfaced rather
 than smoothed over: (1) a "TAM assumption breach" on Pepkor's
 `deposit_nii` (captured exceeds TAM — the 15-day-of-revenue assumption is
 demonstrably too conservative for that entity, flagged not clipped); (2)
@@ -179,7 +182,11 @@ dual-listed global majors (BHP, Glencore, Anglo American, AngloGold
 Ashanti, Gold Fields, Prosus, Naspers, Shaftesbury) report GLOBAL not
 SA-specific revenue, inflating their TAM denominator and making their low
 share-of-wallet numbers not directly comparable to SA-domestic entities —
-**Phase 6 must treat this cohort separately, not rank by raw gap size.**
+**Phase 6 must treat this cohort separately, not rank by raw gap size**;
+(3) Investment Banking's row-aligned blended share is exactly 45.0% by
+construction, not a real capture rate (its only observable sub-component's
+TAM is derived from captured at a fixed 45% share) — a visible
+illustration of a documented limitation, not a new finding to chase.
 Three sub-components (`rate_hedging`, `debt_arrangement`,
 `competitor_credit_gap`) have a captured side that's structurally
 unobservable from the provided data (no derivatives book, no
@@ -189,7 +196,7 @@ blended shares, not treated as R0 capture. Full derivation: METHODOLOGY.md
 fields) were not needed — `total_debt` alone drives the debt-arrangement
 TAM.
 
-## Phase 5 — Rigor layer ⬜ (30% of the marks lives here)
+## Phase 5 — Rigor layer ✅ DONE (30% of the marks lives here)
 
 1. Monte Carlo over the assumption priors → report SOW as a credible
    interval, never a bare point estimate.
@@ -205,6 +212,35 @@ TAM.
    volume is FLAT across 2023-07 to 2026-06 (R10.4–12.7bn, no drift) — if
    there is no per-client trend either, **SAY SO in limitations. Do not
    manufacture a trend.**
+
+**Built as:** `src/uncertainty.py`; `config/assumptions.yaml` extended with
+`low`/`high` on every leaf (same file Phase 4 uses, not a second set of
+parameters). Output: `data/processed/monte_carlo_results.parquet`,
+`tornado_sensitivity.parquet`, `revealed_presence.parquet`,
+`sector_regression.parquet`, `time_trends_entity.parquet`,
+`time_trends_corridor.parquet`, `reports/tornado_chart.png`,
+`reports/uncertainty_report.md`. **Results, all five in one pass:**
+(1) portfolio blended share credible interval **3.1%–6.8%** (base case
+5.3%, median 4.6%) over 2,000 iterations; (2) tornado top-4 all in
+Transactional Banking, `payments_per_zar_throughput` largest (3.3pp) —
+confirms the assumption already flagged as least-anchored in
+`config/assumptions.yaml`; 5 assumptions show 0.00pp *share* swing by
+construction (they only move TAM on sub-components with a structurally-
+null captured side) — real, non-zero TAM impact shown separately, not
+hidden; (3) revealed-presence estimator diverges systematically from the
+yield-based one for 17/20 entities (this portfolio's clients are all
+already broad users, limiting the method's power to discriminate) — the
+one exception, Pepkor at –21.5pp, independently corroborates Phase 4's TAM
+assumption breach finding; (4) sector regression flags 2 entities below
+their sector line (Valterra Platinum, Clicks Group), R²=0.82 portfolio-
+wide — genuinely informative signal concentrates in `debt_arrangement`/
+`trade_finance_instruments` since Transactional Banking's TAM is
+proportional to revenue by construction, muting that pillar's regression
+by design, disclosed not hidden; (5) time trends: 0/5 corridors
+significant even at raw p<0.05 (confirms Phase 1's aggregate flatness),
+but **5/20 entities show a trend robust to Bonferroni correction** (BHP,
+Anglo American, OUTsurance, Sanlam, NEPI Rockcastle) — both facts true at
+once, neither hidden. Full derivation: METHODOLOGY.md §6.
 
 ## Phase 6 — Opportunity ranking ⬜
 

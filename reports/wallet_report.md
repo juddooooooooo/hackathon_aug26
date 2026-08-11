@@ -6,36 +6,36 @@ Every rand figure below is BANK REVENUE (fees + margin), not transaction flow --
 
 | pillar                |   tam_R_m |   captured_R_m | share_of_wallet   |
 |:----------------------|----------:|---------------:|:------------------|
-| Global Markets        |    2295.3 |          267.5 | 11.7%             |
-| Investment Banking    |    6539.2 |           96.5 | 1.5%              |
+| Global Markets        |    1283.3 |           48.6 | 3.8%              |
+| Investment Banking    |     214.5 |           96.5 | 45.0%             |
 | Transactional Banking |   17103.8 |          832.1 | 4.9%              |
 
-**Portfolio total (sum of observable sub-components): TAM R25,938.2m, captured R1,196.1m, blended share 4.6%.** This blend only sums sub-components where both sides are observable -- rate_hedging and debt_arrangement's captured legs are excluded from this sum, not treated as R0 capture.
+**Portfolio total (sum of observable sub-components): TAM R18,601.5m, captured R977.3m, blended share 5.3%.** This blend only sums sub-components where BOTH sides are observable on the same row -- e.g. fx_hedging's captured leg (always observable) is excluded from this sum for the entities where its TAM is null (missing foreign_revenue_pct), not counted as free-floating revenue with no addressable-market denominator. rate_hedging and debt_arrangement's captured legs are excluded entirely (never observable), not treated as R0 capture.
 
 ## Per-entity summary (R millions, sum across observable sub-components)
 
 | entity_id   | entity_name             | sector             |   tam_R_m |   captured_R_m | share_of_wallet   |
 |:------------|:------------------------|:-------------------|----------:|---------------:|:------------------|
-| E02         | Glencore                | mining             |   11848.8 |           79.4 | 0.7%              |
-| E01         | BHP Group               | mining             |    3974.1 |          238.8 | 6.0%              |
-| E03         | Anglo American          | mining             |    1467.5 |          147.6 | 10.1%             |
-| E15         | Naspers                 | tech               |    1222.6 |           16.4 | 1.3%              |
-| E14         | Prosus                  | tech               |    1154.7 |           19.9 | 1.7%              |
-| E16         | MTN Group               | telecoms           |     894.6 |           88.1 | 9.8%              |
-| E09         | Shoprite Holdings       | consumer           |     761.7 |           64.5 | 8.5%              |
-| E17         | Vodacom Group           | telecoms           |     687.9 |           20   | 2.9%              |
-| E10         | Bid Corporation         | consumer           |     639.9 |           77.6 | 12.1%             |
-| E05         | Gold Fields             | mining             |     594.7 |           31.6 | 5.3%              |
-| E18         | The Bidvest Group       | industrials_pharma |     479.9 |           34.7 | 7.2%              |
-| E08         | Sanlam                  | insurance          |     467.9 |          120.2 | 25.7%             |
-| E04         | AngloGold Ashanti       | mining             |     448.2 |           33.2 | 7.4%              |
-| E11         | Pepkor Holdings         | consumer           |     304.8 |          182.3 | 59.8%             |
-| E06         | Valterra Platinum       | mining             |     283.8 |            2.9 | 1.0%              |
-| E13         | NEPI Rockcastle         | real_estate        |     218.1 |            1.6 | 0.7%              |
-| E19         | Aspen Pharmacare        | industrials_pharma |     204.1 |           23.7 | 11.6%             |
-| E12         | Clicks Group            | consumer           |     122.3 |            6.9 | 5.6%              |
-| E20         | Shaftesbury Capital plc | real_estate        |      94.9 |            0.8 | 0.8%              |
-| E07         | OUTsurance Group        | insurance          |      67.9 |            6   | 8.8%              |
+| E02         | Glencore                | mining             |    9904.8 |           65.1 | 0.7%              |
+| E01         | BHP Group               | mining             |    2826   |          238.8 | 8.5%              |
+| E03         | Anglo American          | mining             |     742.1 |          139.4 | 18.8%             |
+| E09         | Shoprite Holdings       | consumer           |     599.6 |           44.1 | 7.4%              |
+| E10         | Bid Corporation         | consumer           |     563.9 |           46.9 | 8.3%              |
+| E16         | MTN Group               | telecoms           |     463.8 |           49.3 | 10.6%             |
+| E05         | Gold Fields             | mining             |     443.7 |           31.6 | 7.1%              |
+| E17         | Vodacom Group           | telecoms           |     414.5 |           20   | 4.8%              |
+| E08         | Sanlam                  | insurance          |     409.6 |          103.5 | 25.3%             |
+| E15         | Naspers                 | tech               |     372.7 |            4.5 | 1.2%              |
+| E18         | The Bidvest Group       | industrials_pharma |     350.8 |           34.7 | 9.9%              |
+| E04         | AngloGold Ashanti       | mining             |     341.3 |           28   | 8.2%              |
+| E14         | Prosus                  | tech               |     330.4 |            7.9 | 2.4%              |
+| E06         | Valterra Platinum       | mining             |     268.5 |            1.7 | 0.6%              |
+| E11         | Pepkor Holdings         | consumer           |     226.8 |          142.1 | 62.7%             |
+| E12         | Clicks Group            | consumer           |     110.6 |            0.8 | 0.7%              |
+| E19         | Aspen Pharmacare        | industrials_pharma |      99.4 |           15.3 | 15.4%             |
+| E07         | OUTsurance Group        | insurance          |      66.8 |            1.2 | 1.8%              |
+| E13         | NEPI Rockcastle         | real_estate        |      49.8 |            1.6 | 3.2%              |
+| E20         | Shaftesbury Capital plc | real_estate        |      16.5 |            0.8 | 4.8%              |
 
 ## ⚠ TAM assumption breaches (1 sub-component row(s))
 

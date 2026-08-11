@@ -10,13 +10,14 @@ Usage:
     python run_all.py --until forensics  # stop after a given phase
     python run_all.py --no-llm           # regex baseline only, no LLM calls/API key needed
     python run_all.py --sample 200       # forensics: process a sample instead of all rows
+    python run_all.py --mc-iterations 200  # uncertainty: faster/rougher Monte Carlo (default 2000, ~3min)
 
 Phases (see METHODOLOGY.md for what each one does and why):
     1. ingest     -- src/ingest.py     (DuckDB load + profiling report)
     2. forensics  -- src/forensics.py  (competitor-credit memo extraction) [Gen AI #1]
     3. financials -- src/financials.py (external financial baseline)       [Gen AI #2]
     4. wallet     -- src/wallet.py     (total wallet + Syn Bank share)
-    5. uncertainty-- src/uncertainty.py(Monte Carlo, sensitivity, triangulation)         -- not yet built
+    5. uncertainty-- src/uncertainty.py(Monte Carlo, sensitivity, triangulation)
     6. opportunity-- src/opportunity.py(expected-value ranking)                          -- not yet built
     7. bonus      -- cash-cycle timing + latency/cost optimisation                       -- not yet built
     8. dashboard  -- app/ (Streamlit)                                                    -- not yet built
@@ -32,7 +33,7 @@ from src.common import configure_logging
 
 logger = logging.getLogger("run_all")
 
-PHASES = ["ingest", "forensics", "financials", "wallet"]  # extended as later phases are built
+PHASES = ["ingest", "forensics", "financials", "wallet", "uncertainty"]  # extended as later phases are built
 
 
 def main() -> None:
@@ -41,6 +42,7 @@ def main() -> None:
     parser.add_argument("--no-llm", action="store_true", help="Skip LLM calls in every phase that has one.")
     parser.add_argument("--sample", type=int, default=None, help="Forensics: sample N rows instead of the full set.")
     parser.add_argument("--max-workers", type=int, default=12, help="Forensics: concurrent LLM requests.")
+    parser.add_argument("--mc-iterations", type=int, default=2000, help="Uncertainty: Monte Carlo iteration count.")
     args = parser.parse_args()
 
     configure_logging()
@@ -88,6 +90,15 @@ def main() -> None:
         from src.wallet import main as wallet_main
 
         wallet_main()
+
+    if "uncertainty" in run_until:
+        logger.info("=" * 70)
+        logger.info("PHASE 5 -- Rigor Layer (Monte Carlo, sensitivity, triangulation)")
+        logger.info("=" * 70)
+        from src.uncertainty import main as uncertainty_main
+
+        sys.argv = ["uncertainty", "--mc-iterations", str(args.mc_iterations)]
+        uncertainty_main()
 
     elapsed = time.perf_counter() - t_start
     logger.info("=" * 70)

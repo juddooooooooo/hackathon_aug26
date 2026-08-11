@@ -396,14 +396,29 @@ def add_share_and_breach_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build_wallet_model() -> pd.DataFrame:
-    assumptions = load_assumptions()
-    con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
-    internal = compute_internal_aggregates(con)
-    con.close()
-
-    fin = load_financial_baseline().set_index("entity_id")
-    competitor_events = load_competitor_events()
+def build_wallet_model(
+    assumptions: Optional[dict[str, Any]] = None,
+    internal: Optional[dict[str, pd.DataFrame]] = None,
+    fin: Optional[pd.DataFrame] = None,
+    competitor_events: Optional[pd.DataFrame] = None,
+) -> pd.DataFrame:
+    """Compute the full wallet model. All four inputs are loaded from disk if
+    not supplied -- Phase 5's Monte Carlo loads `internal`/`fin`/
+    `competitor_events` ONCE (they never change across iterations) and calls
+    this repeatedly with only `assumptions` perturbed, which is what makes
+    thousands of iterations fast instead of re-hitting DuckDB/parquet every
+    time.
+    """
+    if assumptions is None:
+        assumptions = load_assumptions()
+    if internal is None:
+        con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
+        internal = compute_internal_aggregates(con)
+        con.close()
+    if fin is None:
+        fin = load_financial_baseline().set_index("entity_id")
+    if competitor_events is None:
+        competitor_events = load_competitor_events()
 
     all_rows: list[dict] = []
     for entity_id in sorted(EXPECTED_ENTITIES.keys()):
@@ -422,6 +437,22 @@ def build_wallet_model() -> pd.DataFrame:
 # --------------------------------------------------------------------------
 # 6. Reporting
 # --------------------------------------------------------------------------
+def blended_tam_and_captured(df: pd.DataFrame) -> tuple[float, float]:
+    """Sum tam_zar and captured_zar over rows where BOTH are observable only.
+
+    Summing each column independently (dropna per-column) double-dips:
+    fx_hedging's captured leg is observable for every entity (we always see
+    FX turnover) but its TAM is null for the 14/20 entities missing
+    foreign_revenue_pct -- an independent-sum blend would count that
+    captured revenue in the numerator with no matching TAM in the
+    denominator, inflating the blended share. Row-aligning fixed this from
+    an (incorrect) 4.6% to 5.3% blended portfolio share -- see
+    METHODOLOGY.md Phase 4 section "A bug found computing the blend".
+    """
+    valid = df[df["tam_zar"].notna() & df["captured_zar"].notna()]
+    return valid["tam_zar"].sum(), valid["captured_zar"].sum()
+
+
 def render_markdown(df: pd.DataFrame) -> str:
     lines = ["# Phase 4 — Wallet Model Report", ""]
     lines.append(
@@ -435,28 +466,31 @@ def render_markdown(df: pd.DataFrame) -> str:
     lines.append("")
 
     lines.append("## Portfolio-level: total TAM and captured revenue by pillar (R millions)\n")
-    pivot = df.groupby("pillar").agg(
-        tam_R_m=("tam_zar", lambda s: s.dropna().sum() / 1e6),
-        captured_R_m=("captured_zar", lambda s: s.dropna().sum() / 1e6),
+    pivot = df.groupby("pillar").apply(
+        lambda g: pd.Series(dict(zip(("tam_R_m", "captured_R_m"), (v / 1e6 for v in blended_tam_and_captured(g))))),
+        include_groups=False,
     ).reset_index()
     pivot["share_of_wallet"] = (pivot["captured_R_m"] / pivot["tam_R_m"]).map(lambda x: f"{x:.1%}" if pd.notna(x) else "n/a")
     pivot["tam_R_m"] = pivot["tam_R_m"].round(1)
     pivot["captured_R_m"] = pivot["captured_R_m"].round(1)
     lines.append(pivot.to_markdown(index=False))
 
-    total_tam = df["tam_zar"].dropna().sum() / 1e6
-    total_captured = df["captured_zar"].dropna().sum() / 1e6
+    total_tam_raw, total_captured_raw = blended_tam_and_captured(df)
+    total_tam, total_captured = total_tam_raw / 1e6, total_captured_raw / 1e6
     lines.append(
         f"\n**Portfolio total (sum of observable sub-components): TAM R{total_tam:,.1f}m, "
         f"captured R{total_captured:,.1f}m, blended share {total_captured/total_tam:.1%}.** "
-        "This blend only sums sub-components where both sides are observable -- rate_hedging and "
-        "debt_arrangement's captured legs are excluded from this sum, not treated as R0 capture."
+        "This blend only sums sub-components where BOTH sides are observable on the same row -- "
+        "e.g. fx_hedging's captured leg (always observable) is excluded from this sum for the "
+        "entities where its TAM is null (missing foreign_revenue_pct), not counted as free-floating "
+        "revenue with no addressable-market denominator. rate_hedging and debt_arrangement's captured "
+        "legs are excluded entirely (never observable), not treated as R0 capture."
     )
 
     lines.append("\n## Per-entity summary (R millions, sum across observable sub-components)\n")
-    ent_summary = df.groupby(["entity_id", "entity_name", "sector"]).agg(
-        tam_R_m=("tam_zar", lambda s: s.dropna().sum() / 1e6),
-        captured_R_m=("captured_zar", lambda s: s.dropna().sum() / 1e6),
+    ent_summary = df.groupby(["entity_id", "entity_name", "sector"]).apply(
+        lambda g: pd.Series(dict(zip(("tam_R_m", "captured_R_m"), (v / 1e6 for v in blended_tam_and_captured(g))))),
+        include_groups=False,
     ).reset_index()
     ent_summary["share_of_wallet"] = (ent_summary["captured_R_m"] / ent_summary["tam_R_m"])
     ent_summary = ent_summary.sort_values("tam_R_m", ascending=False)
@@ -523,8 +557,8 @@ def main() -> pd.DataFrame:
     OUTPUT_REPORT_MD.write_text(report, encoding="utf-8")
     logger.info("Wrote %s", OUTPUT_REPORT_MD)
 
-    total_tam = df["tam_zar"].dropna().sum() / 1e6
-    total_captured = df["captured_zar"].dropna().sum() / 1e6
+    total_tam_raw, total_captured_raw = blended_tam_and_captured(df)
+    total_tam, total_captured = total_tam_raw / 1e6, total_captured_raw / 1e6
     logger.info("Portfolio: TAM R%.1fm, captured R%.1fm, blended share %.1f%%", total_tam, total_captured, total_captured / total_tam * 100)
 
     return df
