@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Syn Bank Share-of-Wallet Intelligence Engine — Presentation</title>
+<style>
+  @page { size: 13.333in 7.5in; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: Calibri, "Segoe UI", Georgia, sans-serif;
+    color: #241f16;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  :root {
+    --paper: #faf6ee;
+    --card: #ffffff;
+    --ink: #241f16;
+    --ink-soft: #574d3b;
+    --ink-faint: #8a7d63;
+    --green: #3c5233;
+    --green-deep: #2b3c25;
+    --green-pale: #e7ebe2;
+    --terracotta: #a8532a;
+    --terracotta-soft: #f2e2d3;
+    --sand: #efe6d2;
+    --rule: #ddd2b8;
+    --blue: #4a6fa1;
+  }
+
+  .slide {
+    width: 13.333in; height: 7.5in;
+    position: relative;
+    background: var(--paper);
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+
+  .pad { padding: 0.55in 0.7in 0.5in; height: 100%; }
+
+  .kicker {
+    font-size: 12pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--terracotta);
+    font-weight: 700;
+    margin-bottom: 0.14in;
+  }
+  h1.slide-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 30pt;
+    font-weight: 700;
+    color: var(--green-deep);
+    margin: 0 0 0.2in;
+    line-height: 1.14;
+    letter-spacing: -0.01em;
+  }
+  .slide-num {
+    position: absolute; bottom: 0.3in; right: 0.7in;
+    font-size: 9pt; color: var(--ink-faint);
+  }
+  .slide-brand {
+    position: absolute; bottom: 0.3in; left: 0.7in;
+    font-size: 9pt; color: var(--ink-faint); letter-spacing: 0.03em;
+  }
+
+  p.lede { font-size: 14pt; color: var(--ink-soft); line-height: 1.5; max-width: 9.5in; }
+  p.body { font-size: 12.5pt; color: var(--ink-soft); line-height: 1.5; }
+  b { color: var(--ink); }
+  .num { color: var(--terracotta); font-weight: 700; }
+
+  /* ---- title slide ---- */
+  .title-slide {
+    background: var(--green-deep);
+    color: #f4efdf;
+  }
+  .title-slide .pad { display: flex; flex-direction: column; justify-content: center; height: 100%; padding: 0 1in; }
+  .title-slide .kicker { color: #c9d6c2; }
+  .title-slide h1 {
+    font-family: Georgia, serif;
+    font-size: 40pt; font-weight: 700; color: #f4efdf;
+    line-height: 1.14; margin: 0.12in 0 0.25in; max-width: 10in;
+  }
+  .title-slide .sub { font-size: 15pt; color: #dfd6bd; max-width: 8.5in; line-height: 1.5; margin-bottom: 0.55in; }
+  .title-strip { display: flex; gap: 0.9in; border-top: 1px solid rgba(244,239,223,0.28); padding-top: 0.28in; }
+  .title-strip .l { font-size: 10pt; text-transform: uppercase; letter-spacing: 0.06em; color: #a9b89f; margin-bottom: 0.06in; }
+  .title-strip .v { font-size: 13pt; font-weight: 600; color: #f4efdf; }
+  .title-strip .v.placeholder { color: #e7c9a8; font-style: italic; }
+
+  /* ---- section header pattern ---- */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5in; align-items: start; margin-top: 0.3in; }
+  .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35in; margin-top: 0.3in; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 0.3in 0.32in;
+  }
+  .card h3 { font-size: 13.5pt; margin: 0 0 0.08in; color: var(--green-deep); }
+  .card .note { font-size: 10pt; color: var(--ink-faint); margin-bottom: 0.14in; }
+
+  ul.plain { margin: 0; padding: 0; list-style: none; }
+  ul.plain li {
+    font-size: 12.5pt; line-height: 1.45; color: var(--ink-soft);
+    padding: 0.1in 0 0.1in 0.24in; position: relative;
+    border-bottom: 0.5pt solid var(--rule);
+  }
+  ul.plain li:last-child { border-bottom: none; }
+  ul.plain li::before { content: ""; position: absolute; left: 0; top: 0.19in; width: 6px; height: 6px; border-radius: 50%; background: var(--terracotta); }
+
+  /* pipeline */
+  .pipeline { display: flex; flex-wrap: wrap; gap: 0.12in; align-items: center; margin-top: 0.3in; }
+  .pstep {
+    font-size: 11pt; padding: 0.14in 0.2in; border: 1px solid var(--rule); border-radius: 4px;
+    background: var(--card); color: var(--ink-soft);
+  }
+  .pstep.ai { border-color: var(--terracotta); background: var(--terracotta-soft); color: var(--terracotta); font-weight: 700; }
+  .parrow { color: var(--ink-faint); font-size: 13pt; }
+
+  /* stat row */
+  .stat-row { display: flex; gap: 0.35in; margin-top: 0.35in; }
+  .stat {
+    flex: 1; background: var(--card); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 0.26in 0.28in;
+  }
+  .stat .l { font-size: 10pt; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); margin-bottom: 0.06in; }
+  .stat .v { font-family: Georgia, serif; font-size: 25pt; font-weight: 700; color: var(--green-deep); line-height: 1; }
+  .stat .s { font-size: 10.5pt; color: var(--ink-soft); margin-top: 0.06in; }
+
+  .callout {
+    background: var(--terracotta-soft); border-left: 4px solid var(--terracotta);
+    border-radius: 0 5px 5px 0; padding: 0.22in 0.28in; font-size: 12.5pt; color: #4a3423; line-height: 1.48;
+    margin-top: 0.25in;
+  }
+  .callout b { color: var(--terracotta); }
+  .callout.green { background: var(--green-pale); border-left-color: var(--green); color: #2b3c25; }
+  .callout.green b { color: var(--green-deep); }
+
+  table.gen-ai { width: 100%; border-collapse: collapse; margin-top: 0.25in; font-size: 11.5pt; }
+  table.gen-ai th { text-align: left; font-size: 10pt; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); padding: 0 0.14in 0.1in; border-bottom: 1.5px solid var(--rule); }
+  table.gen-ai td { padding: 0.14in 0.14in; border-bottom: 0.5pt solid var(--rule); color: var(--ink-soft); vertical-align: top; }
+  table.gen-ai td b { color: var(--ink); }
+  table.gen-ai tr:last-child td { border-bottom: none; }
+
+  .legend { display: flex; gap: 0.3in; margin-top: 0.12in; font-size: 10.5pt; color: var(--ink-soft); }
+  .legend .item { display: flex; align-items: center; gap: 0.08in; }
+  .legend .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: TITLE -->
+<section class="slide title-slide">
+  <div class="pad">
+    <div class="kicker">Data School Hackathon 2026 · Standard Bank Corporate &amp; Investment Banking</div>
+    <h1>Syn Bank Share-of-Wallet<br>Intelligence Engine</h1>
+    <div class="sub">A data science and Generative AI approach to estimating client wallet, quantifying Syn Bank's current share, and ranking the highest-priority growth opportunities.</div>
+    <div class="title-strip">
+      <div><div class="l">Team Name</div><div class="v placeholder">[Insert team name]</div></div>
+      <div><div class="l">Team Members</div><div class="v">Judd Jocum, Asher Hyde</div></div>
+      <div><div class="l">Submission</div><div class="v">August 2026</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 2: THE CHALLENGE -->
+<section class="slide">
+  <div class="pad">
+    <div class="kicker">01 — The Problem</div>
+    <h1 class="slide-title">Syn Bank never has the whole client</h1>
+    <p class="lede">Corporate clients spread their banking activity across multiple providers, for pricing tension, risk management, and product specialisation. The commercial question is not how much flows through Syn Bank's own books — it is how large the client's <b>total</b> wallet is, and where a competitor currently holds the larger share.</p>
+    <div class="three-col">
+      <div class="card">
+        <h3>1. Quantify capture</h3>
+        <div class="note">What share of each client's total wallet does Syn Bank hold today, across Transactional Banking, Global Markets, and Investment Banking?</div>
+      </div>
+      <div class="card">
+        <h3>2. Rank the gap</h3>
+        <div class="note">Where is the gap between total wallet and current share largest — and most winnable?</div>
+      </div>
+      <div class="card">
+        <h3>3. Apply Gen AI meaningfully</h3>
+        <div class="note">Not a cosmetic extra: a use case that does real analytical work and adds measurable value.</div>
+      </div>
+    </div>
+    <div class="slide-brand">SYN BANK SHARE-OF-WALLET INTELLIGENCE ENGINE</div>
+    <div class="slide-num">2</div>
+  </div>
+</section>
+
+<!-- SLIDE 3: DATA & SCOPE -->
+<section class="slide">
+  <div class="pad">
+    <div class="kicker">02 — Data &amp; Scope</div>
+    <h1 class="slide-title">Three internal ledgers, supplemented with public data</h1>
+    <div class="two-col">
+      <div class="card">
+        <h3>What we were given</h3>
+        <ul class="plain">
+          <li>Domestic transaction ledger — 2.8m rows</li>
+          <li>Cross-border SWIFT payment data</li>
+          <li>Trade finance instrument activity</li>
+          <li>Validated consistently to <b>20</b> JSE-listed clients across all three files, not the 50 the brief described — disclosed openly, not adjusted to fit</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>What we sourced externally</h3>
+        <ul class="plain">
+          <li>No financial-statement documents were supplied</li>
+          <li>Core financials sourced directly from public filings for all 20 clients</li>
+          <li>JSE SENS announcements, investor-relations pages, annual reports</li>
+          <li>Every external figure cited to its source, with a confidence flag</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">Where Syn Bank's own ledger goes quiet — no FX hedge, no lending relationship, no trade finance activity — we treat that as a genuine analytical signal, not a data gap to explain away. It usually means a competitor is holding that piece of the relationship.</div>
+    <div class="slide-brand">SYN BANK SHARE-OF-WALLET INTELLIGENCE ENGINE</div>
+    <div class="slide-num">3</div>
+  </div>
+</section>
+
+<!-- SLIDE 4: METHODOLOGY -->
+<section class="slide">
+  <div class="pad">
+    <div class="kicker">03 — Methodology</div>
+    <h1 class="slide-title">Every rand traces back to a named assumption</h1>
+    <p class="body">Eight stages, each reading only the previous stage's saved output. The design choice that makes everything downstream defensible: every coefficient that converts observed flow into estimated bank revenue lives in one disclosed, sourced file — never hardcoded inside the model.</p>
+    <div class="pipeline">
+      <span class="pstep">01 Ingest ledgers</span><span class="parrow">→</span>
+      <span class="pstep ai">02 Extract credit signal · Gen AI</span><span class="parrow">→</span>
+      <span class="pstep ai">03 Source financials · Gen AI</span><span class="parrow">→</span>
+      <span class="pstep">04 Flow → bank revenue</span><span class="parrow">→</span>
+      <span class="pstep">05 Monte Carlo + sensitivity</span><span class="parrow">→</span>
+      <span class="pstep">06 Rank by expected value</span><span class="parrow">→</span>
+      <span class="pstep ai">07 Briefing notes · Gen AI</span><span class="parrow">→</span>
+      <span class="pstep">08 Dashboard</span>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="l">Total Addressable Wallet</div><div class="v">R18.6bn</div><div class="s">Across 20 clients, 3 pillars</div></div>
+      <div class="stat"><div class="l">Captured by Syn Bank</div><div class="v">R977m</div><div class="s">Observed from internal ledgers</div></div>
+      <div class="stat"><div class="l">Blended Share of Wallet</div><div class="v">5.3%</div><div class="s">Base case — see next slide for range</div></div>
+    </div>
+    <div class="slide-brand">SYN BANK SHARE-OF-WALLET INTELLIGENCE ENGINE</div>
+    <div class="slide-num">4</div>
+  </div>
+</section>
+
+<!-- SLIDE 5: RIGOR -->
+<section class="slide">
+  <div class="pad">
+    <div class="kicker">04 — Analytical Rigor</div>
+    <h1 class="slide-title">We report a distribution, not a point estimate</h1>
+    <div class="two-col" style="margin-top:0.2in;">
+      <div class="card">
+        <h3>Portfolio blended share of wallet</h3>
+        <div class="note">2,000 Monte Carlo iterations · base case 5.3% · 5th–95th pct 3.1%–6.8%</div>
+        <div id="mc-chart"></div>
+      </div>
+      <div class="card">
+        <h3>What the answer is most sensitive to</h3>
+        <div class="note">Swing in blended share as each assumption moves low → high</div>
+        <div id="tornado-chart"></div>
+      </div>
+    </div>
+    <div class="callout">The single largest driver, by a wide margin, is the least-anchored assumption in the model — payment volume per rand of client throughput. A second, fully independent estimator (product-breadth revealed presence) runs systematically higher for 19 of 20 clients — a disclosed limit of that method on this broad-engagement portfolio, not a contradiction. The one client where it does not diverge, Pepkor, independently confirms a separate finding: our TAM assumption for that client is too conservative.</div>
+    <div class="slide-brand">SYN BANK SHARE-OF-WALLET INTELLIGENCE ENGINE</div>
+    <div class="slide-num">5</div>
+  </div>
+</section>
+
+<!-- SLIDE 6: GEN AI -->
+<section class="slide">
+  <div class="pad">
+    <div class="kicker">05 — Generative AI Integration</div>
+    <h1 class="slide-title">Three components that do real analytical work</h1>
+    <table class="gen-ai">
+      <tr><th>Component</th><th>What it does</th><th>How we checked it</th></tr>
+      <tr>
+        <td><b>Competitor-credit extraction</b></td>
+        <td>Classifies free-text transaction memos to identify credit facilities another bank actually holds</td>
+        <td>Cross-checked against an independent keyword baseline, row by row</td>
+      </tr>
+      <tr>
+        <td><b>Financial-statement structuring</b></td>
+        <td>Reads public filings and extracts revenue, cost of sales, debt, and foreign-revenue exposure to a strict schema</td>
+        <td>Hand-labelled ground-truth sample, scored field by field</td>
+      </tr>
+      <tr>
+        <td><b>Client briefing notes</b></td>
+        <td>Drafts a client-ready summary and recommended next step for every one of the 20 clients</td>
+        <td>Grounded strictly in already-computed figures — never free-generated</td>
+      </tr>
+    </table>
+    <div class="callout green"><b>Beyond the brief's minimum:</b> the brief asks for briefing notes on at least 3 clients. We generated all 20 — every prompt logged, every response cached, every call timed and costed.</div>
+    <div class="slide-brand">SYN BANK SHARE-OF-WALLET INTELLIGENCE ENGINE</div>
+    <div class="slide-num">6</div>
+  </div>
+</section>
+
+<!-- SLIDE 7: FINDING 1 -->
+<section class="slide">
+  <div class="pad">
+    <div class="kicker">06 — Key Finding</div>
+    <h1 class="slide-title">R1.0bn in flow that belongs to someone else's balance sheet</h1>
+    <div class="two-col" style="margin-top:0.15in;">
+      <div class="card">
+        <h3>Primary + secondary tier, by client</h3>
+        <div class="note">Top 10 of 20 clients, R millions</div>
+        <div id="cc-chart"></div>
+        <div class="legend">
+          <span class="item"><span class="sw" style="background:#4a6fa1"></span>Primary — confirmed beneficiary</span>
+          <span class="item"><span class="sw" style="background:#a8532a"></span>Secondary — templated language</span>
+        </div>
+      </div>
+      <div>
+        <p class="body">A recurring memo template — <i>"bridging facility settlement," "syndicate participation settlement"</i> — appears <b>4,199</b> times across all three ledgers. Every occurrence marks a payment Syn Bank is settling for a credit facility another bank originated.</p>
+        <p class="body">Roughly <b>2.5×</b> larger than the scale the original brief implied, because the same fingerprint also appears in the domestic payments ledger.</p>
+        <div class="callout"><b>Why this matters:</b> this list does not depend on a single yield assumption. It is a direct read of the ledger, cross-checked two independent ways. A coverage banker can act on it today.</div>
+      </div>
+    </div>
+    <div class="slide-brand">SYN BANK SHARE-OF-WALLET INTELLIGENCE ENGINE</div>
+    <div class="slide-num">7</div>
+  </div>
+</section>
+
+<!-- SLIDE 8: FINDING 2 -->
+<section class="slide">
+  <div class="pad">
+    <div class="kicker">07 — Key Finding</div>
+    <h1 class="slide-title">Ranked by expected value, not raw gap size</h1>
+    <p class="body" style="margin-top:0.05in;"><span class="num">wallet_gap × win_probability × margin</span> — with product-sequencing enforced: you win FX off the back of payment flow, not the reverse.</p>
+    <div class="table-wrap"><table class="gen-ai" id="rank-table"></table></div>
+    <div class="callout"><b>11 of the top 12</b> clients' single largest opportunity is the same specific product — payment-fee pricing — not a generic "Transactional Banking" label. <b>9 of 12</b> are flagged as not yet ready for a Global Markets or Investment Banking pitch.</div>
+    <div class="slide-brand">SYN BANK SHARE-OF-WALLET INTELLIGENCE ENGINE</div>
+    <div class="slide-num">8</div>
+  </div>
+</section>
+
+<!-- SLIDE 9: RECOMMENDATIONS -->
+<section class="slide">
+  <div class="pad">
+    <div class="kicker">08 — Recommendations</div>
+    <h1 class="slide-title">What this changes on Monday morning</h1>
+    <div class="three-col" style="margin-top:0.25in;">
+      <div class="card">
+        <h3>This week</h3>
+        <div class="note">Open the competitor-credit list. It needs no further validation — only a phone call to the client's treasury team.</div>
+      </div>
+      <div class="card">
+        <h3>Next quarter</h3>
+        <div class="note">Use the ranked opportunity list to set call priorities. Lead with payment-fee pricing conversations where the relationship is ready.</div>
+      </div>
+      <div class="card">
+        <h3>Before pitching cross-sell</h3>
+        <div class="note">Check the sequencing flag first. Nine of twelve clients need a deeper Transactional Banking relationship before an FX or Investment Banking pitch will land.</div>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="l">Ranked Opportunity Value</div><div class="v">R1.1bn</div><div class="s">Across 12 SA-domestic clients</div></div>
+      <div class="stat"><div class="l">Top Opportunity</div><div class="v">Shoprite</div><div class="s">R193.8m expected value</div></div>
+      <div class="stat"><div class="l">Sequencing Flags</div><div class="v">9 / 12</div><div class="s">Not yet ready for cross-sell</div></div>
+    </div>
+    <div class="slide-brand">SYN BANK SHARE-OF-WALLET INTELLIGENCE ENGINE</div>
+    <div class="slide-num">9</div>
+  </div>
+</section>
+
+<!-- SLIDE 10: LIMITATIONS -->
+<section class="slide">
+  <div class="pad">
+    <div class="kicker">09 — Limitations &amp; Honesty</div>
+    <h1 class="slide-title">What we would validate before this goes to a client</h1>
+    <div class="two-col" style="margin-top:0.2in;">
+      <div class="card">
+        <h3>Assumption-dependent, disclosed as such</h3>
+        <ul class="plain">
+          <li>Every fee, margin, and basis-point figure is an informed market-practice estimate — not Syn Bank's real pricing, which no SA bank publishes</li>
+          <li>Win probability is a reasoned, four-signal heuristic — not a calibrated forecast, because no historical win/loss record exists to calibrate against</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>What we could not verify</h3>
+        <ul class="plain">
+          <li>No external benchmark exists to confirm the "correct" share of wallet</li>
+          <li>The provided data covers 20 clients, not the 50 described in the brief — a real, unexplained gap we surfaced rather than papered over</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout green"><b>The ranking is robust to this uncertainty. The rand values are a disciplined first estimate.</b> Replace the market-practice assumptions with Syn Bank's real pricing, and every figure updates — the ranking logic does not need to change.</div>
+    <div class="slide-brand">SYN BANK SHARE-OF-WALLET INTELLIGENCE ENGINE</div>
+    <div class="slide-num">10</div>
+  </div>
+</section>
+
+<!-- SLIDE 11: BONUS / NEXT STEPS -->
+<section class="slide">
+  <div class="pad">
+    <div class="kicker">10 — Bonus Modules &amp; Next Steps</div>
+    <h1 class="slide-title">Two further questions the brief invited us to explore</h1>
+    <div class="two-col" style="margin-top:0.2in;">
+      <div class="card">
+        <h3>Client engagement timing</h3>
+        <div class="note">Do cash cycles suggest a best moment to engage?</div>
+        <p class="body" style="font-size:11.5pt;">Day-level timing showed no usable signal, reported as a null result rather than manufactured. Month-level seasonality did: all four consumer-sector clients in the portfolio peak in December — a real, sector-coherent engagement window.</p>
+      </div>
+      <div class="card">
+        <h3>Latency &amp; cost optimisation</h3>
+        <div class="note">Can model routing reduce Gen AI cost without losing accuracy?</div>
+        <p class="body" style="font-size:11.5pt;">Routed straightforward classification to a smaller model, reserving the larger model for ambiguous cases. Result: 11% cost saved, 100% agreement with the original answers on a held-out sample.</p>
+      </div>
+    </div>
+    <div class="callout">Next step: validate pricing assumptions against Syn Bank's actual rate card, then re-run — the pipeline is fully reproducible end to end from a single command.</div>
+    <div class="slide-brand">SYN BANK SHARE-OF-WALLET INTELLIGENCE ENGINE</div>
+    <div class="slide-num">11</div>
+  </div>
+</section>
+
+<!-- SLIDE 12: THANK YOU -->
+<section class="slide title-slide">
+  <div class="pad">
+    <div class="kicker">Thank You</div>
+    <h1 style="font-size:36pt;">Questions &amp; discussion</h1>
+    <div class="sub">Syn Bank Share-of-Wallet Intelligence Engine — built end to end, reproducible from a single command, every assumption and every Gen AI prompt on the record.</div>
+    <div class="title-strip">
+      <div><div class="l">Team Name</div><div class="v placeholder">[Insert team name]</div></div>
+      <div><div class="l">Team Members</div><div class="v">Judd Jocum, Asher Hyde</div></div>
+      <div><div class="l">Code</div><div class="v" style="font-size:12pt;">github.com/juddooooooooo/hackathon_aug26</div></div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const DATA = {
+    monte_carlo: {"counts":[5,22,44,76,85,117,155,139,161,156,141,151,120,119,88,82,67,61,48,43,28,24,12,12,16,7,2,10,5,4],"edges":[2.39,2.61,2.82,3.04,3.25,3.46,3.68,3.89,4.11,4.32,4.54,4.75,4.97,5.18,5.39,5.61,5.82,6.04,6.25,6.47,6.68,6.89,7.11,7.32,7.54,7.75,7.97,8.18,8.4,8.61,8.82]},
+    mc_p5: 3.11, mc_p95: 6.82, base_case: 5.25,
+    tornado: [{"label":"Payments per R throughput","low":6.76,"high":3.46},{"label":"Payment fee — SWIFT","low":6.3,"high":4.54},{"label":"Avg balance held (days)","low":5.89,"high":4.32},{"label":"Deposit NII margin (bps)","low":4.67,"high":6.18},{"label":"Payment fee — RTC","low":5.36,"high":5.12},{"label":"FX hedge ratio","low":5.31,"high":5.14}],
+    competitor_credit: [{"name":"MTN Group","primary":177.1,"secondary":49.9},{"name":"Bid Corporation","primary":143.4,"secondary":63.5},{"name":"Shoprite Holdings","primary":116.8,"secondary":58.5},{"name":"The Bidvest Group","primary":62.8,"secondary":38.5},{"name":"Aspen Pharmacare","primary":42.8,"secondary":17.0},{"name":"Glencore","primary":14.6,"secondary":40.4},{"name":"Prosus","primary":31.9,"secondary":6.9},{"name":"Vodacom Group","primary":26.6,"secondary":2.1},{"name":"Naspers","primary":23.7,"secondary":4.9},{"name":"AngloGold Ashanti","primary":14.9,"secondary":12.2}],
+    ranking: [{"rank":1,"name":"Shoprite Holdings","product":"Payment fees (transaction volume & pricing)","ev":193.8,"win":54,"flag":true},{"rank":2,"name":"Bid Corporation","product":"Payment fees (transaction volume & pricing)","ev":168.5,"win":51,"flag":true},{"rank":3,"name":"MTN Group","product":"Payment fees (transaction volume & pricing)","ev":141.9,"win":54,"flag":true},{"rank":4,"name":"Vodacom Group","product":"Payment fees (transaction volume & pricing)","ev":123.7,"win":52,"flag":true},{"rank":5,"name":"Sanlam","product":"Payment fees (transaction volume & pricing)","ev":106.0,"win":53,"flag":false},{"rank":6,"name":"The Bidvest Group","product":"Payment fees (transaction volume & pricing)","ev":104.0,"win":54,"flag":true}]
+  };
+
+  function el(tag, attrs, children) {
+    const e = document.createElement(tag);
+    for (const k in (attrs || {})) e.setAttribute(k, attrs[k]);
+    (children || []).forEach(c => e.appendChild(c));
+    return e;
+  }
+  function text(t) { return document.createTextNode(t); }
+  const NS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function renderMC() {
+    const host = document.getElementById("mc-chart");
+    const { counts, edges } = DATA.monte_carlo;
+    const w = 470, h = 210, padL = 30, padB = 24, padT = 8, padR = 8;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+    const maxCount = Math.max(...counts);
+    const xMin = edges[0], xMax = edges[edges.length - 1];
+    const xScale = (x) => padL + (x - xMin) / (xMax - xMin) * plotW;
+    const yScale = (y) => padT + plotH - (y / maxCount) * plotH;
+
+    const svg = svgEl("svg", { viewBox: "0 0 " + w + " " + h, width: "100%" });
+    const bandX1 = xScale(DATA.mc_p5), bandX2 = xScale(DATA.mc_p95);
+    svg.appendChild(svgEl("rect", { x: bandX1, y: padT, width: bandX2 - bandX1, height: plotH, fill: "#3c5233", opacity: "0.1" }));
+    svg.appendChild(svgEl("line", { x1: padL, x2: w - padR, y1: padT + plotH, y2: padT + plotH, stroke: "#ddd2b8" }));
+
+    counts.forEach((c, i) => {
+      const x1 = xScale(edges[i]), x2 = xScale(edges[i+1]);
+      const barW = Math.max(x2 - x1 - 1, 1);
+      const bh = plotH - (yScale(c) - padT);
+      svg.appendChild(svgEl("rect", { x: x1, y: yScale(c), width: barW, height: Math.max(bh, 0), fill: "#4a6fa1" }));
+    });
+
+    const medX = xScale(DATA.base_case);
+    svg.appendChild(svgEl("line", { x1: medX, x2: medX, y1: padT, y2: padT + plotH, stroke: "#574d3b", "stroke-dasharray": "3,3" }));
+
+    [3,4,5,6,7,8].forEach(v => {
+      if (v < xMin || v > xMax) return;
+      const t = svgEl("text", { x: xScale(v), y: h - 5, fill: "#8a7d63", "font-size": "9.5", "text-anchor": "middle" });
+      t.textContent = v + "%";
+      svg.appendChild(t);
+    });
+    host.appendChild(svg);
+  }
+
+  function renderTornado() {
+    const host = document.getElementById("tornado-chart");
+    const data = DATA.tornado;
+    const w = 470, rowH = 30, padL = 8, padR = 8, padT = 6;
+    const h = padT + rowH * data.length + 16;
+    const labelW = 170;
+    const plotW = w - labelW - padR - padL;
+    const allVals = data.flatMap(d => [d.low, d.high]);
+    const xMin = Math.min(...allVals) - 0.3, xMax = Math.max(...allVals) + 0.3;
+    const xScale = (x) => labelW + (x - xMin) / (xMax - xMin) * plotW;
+
+    const svg = svgEl("svg", { viewBox: "0 0 " + w + " " + h, width: "100%" });
+    const bx = xScale(DATA.base_case);
+    svg.appendChild(svgEl("line", { x1: bx, x2: bx, y1: padT, y2: h - 12, stroke: "#574d3b", "stroke-dasharray": "3,3" }));
+
+    data.forEach((d, i) => {
+      const y = padT + i * rowH + rowH / 2;
+      const lo = Math.min(d.low, d.high), hi = Math.max(d.low, d.high);
+      const x1 = xScale(lo), x2 = xScale(hi);
+      const label = svgEl("text", { x: labelW - 10, y: y + 3, "text-anchor": "end", fill: "#574d3b", "font-size": "10.5" });
+      label.textContent = d.label;
+      svg.appendChild(label);
+      svg.appendChild(svgEl("rect", { x: x1, y: y - 7, width: Math.max(x2 - x1, 2), height: 14, rx: 2, fill: "#4a6fa1" }));
+    });
+    host.appendChild(svg);
+  }
+
+  function renderCC() {
+    const host = document.getElementById("cc-chart");
+    const data = DATA.competitor_credit;
+    const max = Math.max(...data.map(d => d.primary + d.secondary));
+    data.forEach(d => {
+      const total = d.primary + d.secondary;
+      const row = el("div", { style: "display:flex;align-items:center;gap:8px;margin-bottom:5px;" }, [
+        el("div", { style: "flex:0 0 120px;font-size:9.5pt;color:#574d3b;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" }, [text(d.name)]),
+        el("div", { style: "flex:1;position:relative;height:14px;background:#efe6d2;border-radius:2px;overflow:hidden;" }, [
+          el("div", { style: "position:absolute;top:0;left:0;height:100%;width:" + ((d.primary+d.secondary)/max*100) + "%;display:flex;" }, [
+            el("div", { style: "width:" + (d.primary/total*100) + "%;background:#4a6fa1;" }, []),
+            el("div", { style: "width:" + (d.secondary/total*100) + "%;background:#a8532a;" }, []),
+          ]),
+        ]),
+        el("div", { style: "flex:0 0 55px;font-size:9.5pt;color:#241f16;" }, [text("R" + total.toFixed(1) + "m")]),
+      ]);
+      host.appendChild(row);
+    });
+  }
+
+  function renderRankTable() {
+    const host = document.getElementById("rank-table");
+    host.appendChild(el("tr", {}, [
+      el("th", {}, [text("Rank")]), el("th", {}, [text("Entity")]), el("th", {}, [text("Specific Product")]),
+      el("th", {}, [text("Expected Value")]), el("th", {}, [text("Win Prob.")]), el("th", {}, [text("Sequencing")]),
+    ]));
+    DATA.ranking.forEach(r => {
+      host.appendChild(el("tr", {}, [
+        el("td", {}, [text(String(r.rank))]),
+        el("td", {}, [el("b", {}, [text(r.name)])]),
+        el("td", {}, [text(r.product)]),
+        el("td", {}, [text("R" + r.ev.toFixed(1) + "m")]),
+        el("td", {}, [text(r.win.toFixed(0) + "%")]),
+        el("td", {}, [text(r.flag ? "Flagged" : "Clear")]),
+      ]));
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    renderMC();
+    renderTornado();
+    renderCC();
+    renderRankTable();
+  });
+</script>
+</body>
+</html>

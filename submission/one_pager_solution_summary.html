@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Syn Bank Share-of-Wallet Intelligence Engine — One-Page Summary</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 210mm; height: 297mm;
+    background: #faf6ee;
+    color: #241f16;
+    font-family: Calibri, "Segoe UI", Georgia, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  :root {
+    --paper: #faf6ee;
+    --card: #ffffff;
+    --ink: #241f16;
+    --ink-soft: #574d3b;
+    --ink-faint: #8a7d63;
+    --green: #3c5233;
+    --green-deep: #2b3c25;
+    --terracotta: #a8532a;
+    --terracotta-soft: #f2e2d3;
+    --sand: #efe6d2;
+    --rule: #ddd2b8;
+  }
+
+  .sheet { width: 210mm; height: 297mm; position: relative; padding: 13mm 14mm 10mm; }
+
+  /* ---- masthead ---- */
+  .masthead {
+    background: var(--green-deep);
+    color: #f4efdf;
+    margin: -13mm -14mm 5mm;
+    padding: 7.5mm 14mm 5.5mm;
+  }
+  .masthead .kicker {
+    font-size: 7.4pt;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #c9d6c2;
+    margin-bottom: 1.8mm;
+  }
+  .masthead h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 18.5pt;
+    font-weight: 700;
+    margin: 0 0 1.6mm;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  .masthead .sub { font-size: 9pt; color: #e3dcc7; max-width: 145mm; line-height: 1.36; }
+  .team-strip {
+    display: flex;
+    gap: 9mm;
+    margin-top: 3mm;
+    padding-top: 2.6mm;
+    border-top: 1px solid rgba(244,239,223,0.28);
+    font-size: 7.6pt;
+  }
+  .team-strip .lab { color: #a9b89f; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.6mm; }
+  .team-strip .val { color: #f4efdf; font-weight: 600; }
+  .team-strip .placeholder { color: #e7c9a8; font-style: italic; font-weight: 500; }
+
+  /* ---- layout ---- */
+  .grid { display: grid; grid-template-columns: 1fr 62mm; gap: 6mm; }
+
+  h2.sec {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 12.5pt;
+    font-weight: 700;
+    color: var(--green-deep);
+    margin: 0 0 2mm;
+    padding-bottom: 1.2mm;
+    border-bottom: 1.4pt solid var(--terracotta);
+    display: inline-block;
+  }
+  .block { margin-bottom: 3.6mm; }
+  p { font-size: 9.4pt; line-height: 1.42; color: var(--ink-soft); margin: 0 0 1.6mm; }
+  p b { color: var(--ink); font-weight: 700; }
+  p .num { color: var(--terracotta); font-weight: 700; }
+
+  .approach-row { display: flex; gap: 2.2mm; margin-top: 1.2mm; }
+  .astep {
+    flex: 1;
+    background: var(--sand);
+    border-radius: 1.5mm;
+    padding: 2.4mm 2.4mm;
+    font-size: 7.6pt;
+    line-height: 1.3;
+    color: var(--ink-soft);
+  }
+  .astep .n { font-family: Georgia, serif; font-weight: 700; color: var(--terracotta); font-size: 8.8pt; }
+
+  ul.findings { margin: 0; padding: 0; list-style: none; }
+  ul.findings li {
+    font-size: 8.9pt;
+    line-height: 1.38;
+    color: var(--ink-soft);
+    padding: 1.5mm 0 1.5mm 4mm;
+    border-bottom: 0.5pt solid var(--rule);
+    position: relative;
+  }
+  ul.findings li:last-child { border-bottom: none; }
+  ul.findings li::before {
+    content: "";
+    position: absolute; left: 0; top: 2.9mm;
+    width: 1.7mm; height: 1.7mm;
+    background: var(--terracotta);
+    border-radius: 50%;
+  }
+  ul.findings li b { color: var(--ink); }
+
+  .reco {
+    background: var(--terracotta-soft);
+    border-left: 2.4pt solid var(--terracotta);
+    border-radius: 0 1mm 1mm 0;
+    padding: 2.6mm 3mm;
+    font-size: 8.9pt;
+    line-height: 1.4;
+    color: #4a3423;
+    margin-bottom: 1.6mm;
+  }
+  .reco b { color: var(--terracotta); }
+
+  .next-steps { font-size: 8.1pt; line-height: 1.38; color: var(--ink-faint); padding: 0 0.5mm; }
+  .next-steps b { color: var(--ink-soft); }
+
+  /* ---- sidebar ---- */
+  .sidebar { display: flex; flex-direction: column; gap: 2.2mm; }
+  .stat-card {
+    background: var(--card);
+    border: 0.6pt solid var(--rule);
+    border-radius: 1.5mm;
+    padding: 2.2mm 2.8mm;
+  }
+  .stat-card .l { font-size: 6.9pt; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); margin-bottom: 0.6mm; }
+  .stat-card .v { font-family: Georgia, serif; font-size: 15.5pt; font-weight: 700; color: var(--green-deep); line-height: 1.05; }
+  .stat-card .s { font-size: 7.2pt; color: var(--ink-soft); margin-top: 0.6mm; }
+
+  .genai-box {
+    background: var(--green-deep);
+    color: #f4efdf;
+    border-radius: 1.5mm;
+    padding: 2.8mm 3mm;
+    font-size: 7.7pt;
+    line-height: 1.38;
+  }
+  .genai-box .l { font-size: 6.9pt; text-transform: uppercase; letter-spacing: 0.06em; color: #c9d6c2; margin-bottom: 1mm; }
+
+  .limits-box {
+    background: var(--sand);
+    border-radius: 1.5mm;
+    padding: 2.6mm 3mm;
+    font-size: 7.5pt;
+    line-height: 1.36;
+    color: var(--ink-soft);
+  }
+  .limits-box .l { font-size: 6.9pt; text-transform: uppercase; letter-spacing: 0.06em; color: var(--terracotta); margin-bottom: 1mm; font-weight: 700; }
+
+  .rigor-box {
+    background: var(--card);
+    border: 0.6pt solid var(--rule);
+    border-radius: 1.5mm;
+    padding: 2.6mm 3mm;
+    font-size: 7.5pt;
+    line-height: 1.42;
+    color: var(--ink-soft);
+  }
+  .rigor-box .l { font-size: 6.9pt; text-transform: uppercase; letter-spacing: 0.06em; color: var(--green); margin-bottom: 1mm; font-weight: 700; }
+  .rigor-box b { color: var(--ink); }
+
+  /* ---- footer ---- */
+  .footer {
+    position: absolute;
+    left: 14mm; right: 14mm; bottom: 8mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 6.8pt;
+    color: var(--ink-faint);
+    border-top: 0.6pt solid var(--rule);
+    padding-top: 2mm;
+  }
+  .footer .repo { font-family: Consolas, monospace; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="masthead">
+    <div class="kicker">Data School Hackathon 2026 · Standard Bank Corporate &amp; Investment Banking</div>
+    <h1>Syn Bank Share-of-Wallet Intelligence Engine</h1>
+    <div class="sub">An evidence-based estimate of Syn Bank's true share of client wallet, and a ranked view of where the largest, most winnable revenue gaps sit.</div>
+    <div class="team-strip">
+      <div><div class="lab">Team Name</div><div class="val placeholder">[Insert team name]</div></div>
+      <div><div class="lab">Team Members</div><div class="val">Judd Jocum, Asher Hyde</div></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="main">
+
+      <div class="block">
+        <h2 class="sec">Executive Summary</h2>
+        <p>We built an eight-stage analytics engine that estimates how much of each client's total banking business Syn Bank currently holds, and ranks the clients and products where the gap is largest and most winnable. Along the way, the engine surfaced a standalone finding that needs no modelling assumption to act on: roughly <span class="num">R1.0 billion</span> in payment flow tied to credit facilities that a competitor bank, not Syn Bank, actually holds.</p>
+      </div>
+
+      <div class="block">
+        <h2 class="sec">The Challenge</h2>
+        <p>Syn Bank holds a share of each client's banking business, never all of it. The commercial question is not how much activity flows through Syn Bank's own books, but how large the client's total wallet really is, and where a competitor currently holds the larger share.</p>
+      </div>
+
+      <div class="block">
+        <h2 class="sec">Our Approach</h2>
+        <div class="approach-row">
+          <div class="astep"><span class="n">01</span> Ingest three ledgers — 3.1m transaction rows, 20 JSE-listed clients</div>
+          <div class="astep"><span class="n">02</span> Extract competitor credit exposure with Gen AI, cross-checked two ways</div>
+          <div class="astep"><span class="n">03</span> Convert flow to bank revenue using named, disclosed assumptions</div>
+          <div class="astep"><span class="n">04</span> Stress-test every assumption with 2,000 Monte Carlo simulations</div>
+          <div class="astep"><span class="n">05</span> Rank opportunities by expected commercial value, not raw gap size</div>
+        </div>
+      </div>
+
+      <div class="block">
+        <h2 class="sec">Key Findings</h2>
+        <ul class="findings">
+          <li>Portfolio blended share of wallet: <b>5.3%</b>, with a <b>3.1%–6.8%</b> credible range across 2,000 simulations — reported as a range, never a single figure</li>
+          <li><b>R1.0bn</b> in flow linked to competitor-originated credit facilities, identified across 4,199 transaction records and confirmed two independent ways</li>
+          <li>Top-ranked opportunity: <b>Shoprite Holdings</b>, R193.8m in expected commercial value</li>
+          <li><b>11 of the top 12</b> clients' single largest opportunity is the same specific product — payment-fee pricing — not a generic "transactional banking" label</li>
+          <li><b>9 of 12</b> clients are not yet ready for a cross-sell pitch: the transactional banking relationship needs to deepen first, and the model flags this automatically</li>
+        </ul>
+      </div>
+
+      <div class="block">
+        <h2 class="sec">Recommendation</h2>
+        <div class="reco"><b>Act on the competitor-credit list first</b> — it requires no further validation, only a phone call. For cross-sell, use the ranked opportunity list to set next quarter's call priorities, starting with clients whose transactional banking relationship is already strong enough to support a broader conversation.</div>
+        <div class="next-steps"><b>Next step to make this decision-grade:</b> replace the disclosed market-practice assumptions with Syn Bank's real pricing, and re-run the model — every figure updates automatically, the ranking logic does not need to change.</div>
+      </div>
+
+    </div>
+
+    <div class="sidebar">
+      <div class="stat-card"><div class="l">Total Addressable Wallet</div><div class="v">R18.6bn</div><div class="s">Across 20 JSE-listed clients</div></div>
+      <div class="stat-card"><div class="l">Captured by Syn Bank Today</div><div class="v">R977m</div><div class="s">5.3% blended share of wallet</div></div>
+      <div class="stat-card"><div class="l">Competitor-Credit Signal</div><div class="v">R1.0bn</div><div class="s">4,199 evidence rows, two-way verified</div></div>
+      <div class="stat-card"><div class="l">Ranked Opportunity Value</div><div class="v">R1.1bn</div><div class="s">Across 12 SA-domestic clients</div></div>
+
+      <div class="genai-box">
+        <div class="l">Generative AI — three components</div>
+        Competitor-credit extraction from free-text memos · external financial-statement structuring · client briefing notes for all 20 clients, grounded strictly in figures the model already computed, never free-generated.
+      </div>
+
+      <div class="limits-box">
+        <div class="l">Limitations</div>
+        Every rand figure rests on disclosed market-practice assumptions, not Syn Bank's own pricing. The ranking is robust; the absolute values are a first estimate pending validation against real pricing data.
+      </div>
+
+      <div class="rigor-box">
+        <div class="l">Rigor &amp; Reproducibility</div>
+        <b>78</b> automated tests · <b>2,000</b>-iteration Monte Carlo on every headline figure · every LLM prompt logged · one command reproduces the full pipeline end to end.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Syn Bank Share-of-Wallet Intelligence Engine — Data School Hackathon 2026</span>
+    <span class="repo">github.com/juddooooooooo/hackathon_aug26</span>
+  </div>
+
+</div>
+</body>
+</html>

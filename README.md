@@ -74,6 +74,8 @@ data/processed/                derived tables (parquet) + the DuckDB database
 reports/                       profiling/forensics/financials/... reports, LLM usage ledger, external_sources.md
 prompts/                       every LLM call ever made, logged verbatim (Gen AI evidence)
 tests/                         pytest unit tests (regex baselines, ground-truth checks)
+notebooks/                     pipeline_walkthrough.ipynb -- executed walkthrough of every phase's real output
+submission/                    hackathon submission package (one-pager + slides, PDF and editable HTML)
 run_all.py                     single reproducible entry point
 CLAUDE.md                      handoff doc: gotchas, conventions, session log -- read first
 PLAN.md                        full phase-by-phase backlog (authoritative scope)

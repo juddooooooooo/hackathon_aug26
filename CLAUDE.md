@@ -646,3 +646,86 @@ Docs updated: METHODOLOGY.md, PLAN.md, README.md, this file.
 modules are now built.** Next agent: remaining work is dashboard/artifact
 cosmetic polish (user-requested: a separate, more polished static Artifact
 showcase alongside the existing Streamlit app) — not new phases.
+
+### 2026-08-16 — Claude (Sonnet 5), submission package + verification pass (crunch time)
+
+Built the actual hackathon submission deliverables and ran a dedicated
+verification pass over them before considering the project "done" —
+different discipline from every earlier entry, which verified pipeline
+*outputs*; this one verified the *submission documents themselves* for
+hallucinated figures, since those are new prose written this session, not
+pipeline output re-displayed.
+
+**Built**: `submission/one_pager_solution_summary.pdf` (A4, one page,
+verified via `pypdf` page count) and `submission/presentation_slides.pdf`
+(12 slides, 16:9, `hackathon.txt`'s Presentation Format structure:
+problem, data/methodology, Gen AI, findings, limitations/next steps).
+Both rendered from hand-authored HTML via Playwright's `page.pdf()`
+(`prefer_css_page_size`), not a slideware export — full design control,
+genuine PDF output, editable source kept alongside
+(`submission/*.html`). Earthy palette (deep green + terracotta + warm
+sand paper) — a deliberate differentiator from the navy/black-and-white
+look most teams will submit, per explicit user direction, while staying
+inside a restrained, Deloitte-memo register (Georgia/Calibri, tight
+grid, sidebar stat cards) rather than reaching for a flashy hero.
+
+**Two real hallucinations caught and fixed by the verification pass, not
+by inspection alone** — a rehearsal of the same discipline this project
+has applied at every phase, now turned on the deliverables themselves:
+- A slide claimed the second independent SOW estimator (revealed
+  presence) "agrees within a narrow band for 19 of 20 clients." The
+  actual, already-documented finding (`reports/uncertainty_report.md`
+  §3) is the opposite: it runs systematically *higher* for 19/20 clients
+  — a disclosed limitation of the method's discriminating power on this
+  broad-engagement portfolio, not agreement. Caught by tracing the claim
+  back to its source report before shipping it, exactly the kind of
+  check earlier session-log entries call out as necessary and easy to
+  skip. Rewritten to state the true finding, which is arguably a
+  *better* rigor-criterion story than the fabricated one.
+- Both new documents (and the already-published showcase Artifact from
+  the prior session) stated "1.7 million transaction rows." Actual
+  combined row count across all three ledgers, queried fresh from
+  `syn_bank.duckdb`: 2,802,875 + 241,117 + 20,303 = **3,064,295** ("3.1m").
+  No record of where 1.7m came from — likely an unverified guess carried
+  forward from memory across artifacts rather than a source query. Fixed
+  in all three places, including republishing the live Artifact.
+
+**Closed a real, previously-unnoticed deliverable gap**: hackathon.txt's
+"Deliverables" section (distinct from its later "Submission and Judging"
+section) names "a reproducible Python or R notebook showing data
+ingestion, transformation, modelling, and visualisation" — this project
+had no `.ipynb` anywhere; the pipeline is `src/*.py` + `run_all.py`,
+which is more reproducible than a notebook but does not literally satisfy
+"a notebook" if a judge checklists the deliverable. Built
+`notebooks/pipeline_walkthrough.ipynb`: imports the project's own
+modules, reads the already-computed `data/processed/*.parquet` (same
+files the dashboard reads — deliberately not a second copy of the
+pipeline logic, and does not require a `GEMINI_API_KEY` to open and
+re-run), and actually **executed** (via `nbclient.NotebookClient`
+in-process — `python -m jupyter nbconvert --execute` hit the same
+multi-Python-install issue documented in "Must-know," resolving to the
+wrong interpreter and failing on `ModuleNotFoundError: duckdb`; running
+nbclient directly inside the already-correct interpreter sidestepped
+kernel-resolution entirely). Every output cell was inspected afterward
+for an `error` output type (zero found) and spot-checked against the
+figures already verified elsewhere this session — including the closing
+cell, which runs `pytest` for real and shows the actual `78 passed`.
+
+**Flagged, not fixed — needs the user directly**:
+1. **`github.com/juddooooooooo/hackathon_aug26` returned 404 to an
+   unauthenticated request** (both the API and the plain repo page) —
+   strong signal the repo is currently **private**. No `gh` CLI or
+   admin-scoped token was available to fix this directly, and changing
+   repo visibility isn't something to do silently even if it had been —
+   flagged as the single highest-priority action item, since a private
+   repo means the "link to code" submission requirement fails outright.
+   Documented in `submission/README.md`.
+2. **Team Name** — genuinely unknown; the repo has no team-info file
+   anywhere and only one git author. User supplied team *members* mid-
+   session (Judd Jocum, Asher Hyde), now filled into both documents; team
+   *name* is left as a clearly-marked `[Insert team name]` placeholder
+   rather than invented, in both the PDFs and their HTML sources.
+
+Pytest still 78/78 (unaffected — this session touched submission
+artifacts and a notebook, not pipeline code). `requirements.txt` gained
+`jupyterlab`/`ipykernel` for the new notebook.
