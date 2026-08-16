@@ -8,17 +8,13 @@ Prepared for the Data School Hackathon 2026 submission form.
   in a browser, edit the visible text directly, then re-print to PDF (Ctrl+P → Save as PDF, or reuse the
   Playwright render scripts referenced in the session log) to regenerate.
 
-## Before submitting
+## Status
 
-1. **Team Name is a placeholder.** Both PDFs currently show `[Insert team name]` in the header/footer.
-   Find-and-replace it in the two `.html` files (search for `[Insert team name]`), then re-render to PDF.
-2. **Confirm the GitHub repository is public.** As of this build, `github.com/juddooooooooo/hackathon_aug26`
-   returned 404 to an unauthenticated request — that means it is currently **private**, and the judging
-   panel will not be able to open the code link. Fix: repo → Settings → General → Danger Zone → Change
-   visibility → Public. Takes under a minute; this blocks the "link to code" requirement entirely if left
-   private.
-3. Double-check the two PDFs render as exactly one page (one-pager) and 12 slides (deck) after any edits —
-   both were verified at build time via `pypdf`'s page count.
+- **Team Name**: sudo Vinos. **Team Members**: Judd Jocum, Asher Hyde. Filled in on both documents.
+- **GitHub repository**: confirmed public (`github.com/juddooooooooo/hackathon_aug26` returns 200) —
+  this was private earlier in the build and was switched before this version was rendered.
+- Both PDFs verified at build time (`pypdf` page count) to be exactly one page (one-pager) and 12 slides
+  (deck). Re-verify this if you edit the HTML and re-render — it's easy to overflow a page with new content.
 
 ## What's inside each deliverable
 
